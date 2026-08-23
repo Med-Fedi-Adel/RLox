@@ -1,3 +1,5 @@
+use crate::token::{Literal, Token, TokenType};
+
 pub struct Scanner {
     // ...
 }
