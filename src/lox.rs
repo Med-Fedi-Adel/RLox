@@ -20,7 +20,7 @@ impl Lox {
 
         self.run(&contents);
 
-        if (self.had_error) {
+        if self.had_error {
             std::process::exit(65);
         }
     }
@@ -54,7 +54,7 @@ impl Lox {
     }
 
     fn report(&mut self, line: i32, location: &str, message: &str) {
-        println!("[line {}] Error {}: {}", line, location, message);
+        eprintln!("[line {}] Error {}: {}", line, location, message);
         self.had_error = true;
     }
 }
