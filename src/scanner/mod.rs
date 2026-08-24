@@ -311,3 +311,6 @@ impl Scanner {
         self.had_error = true;
     }
 }
+
+#[cfg(test)]
+mod tests;
