@@ -112,10 +112,13 @@ impl Scanner {
             // Slash or comment.
             '/' => {
                 if self.match_char('/') {
-                    // A comment goes until the end of the line.
+                    // A single line comment goes until the end of the line.
                     while self.peek() != '\n' && !self.is_at_end() {
                         self.advance();
                     }
+                } else if self.match_char('*') {
+                    // Block comment.
+                    self.block_comment();
                 } else {
                     self.add_token(TokenType::Slash);
                 }
@@ -143,6 +146,34 @@ impl Scanner {
                     self.error("Unexpected character.");
                 }
             }
+        }
+    }
+
+    fn block_comment(&mut self) {
+        let mut depth = 1;
+
+        while depth > 0 && !self.is_at_end() {
+            if self.peek() == '/' && self.peek_next() == '*' {
+                // Start of nested comment.
+                self.advance();
+                self.advance();
+                depth += 1;
+            } else if self.peek() == '*' && self.peek_next() == '/' {
+                // End of current comment.
+                self.advance();
+                self.advance();
+                depth -= 1;
+            } else {
+                if self.peek() == '\n' {
+                    self.line += 1;
+                }
+
+                self.advance();
+            }
+        }
+
+        if depth > 0 {
+            self.error("Unterminated block comment.");
         }
     }
 
