@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::token::{Literal, Token, TokenType};
 
 pub struct Scanner {
@@ -7,10 +9,30 @@ pub struct Scanner {
     current: usize,
     line: usize,
     had_error: bool,
+    keywords: HashMap<String, TokenType>,
 }
 
 impl Scanner {
     pub fn new(source: &str) -> Self {
+        let mut keywords = HashMap::new();
+
+        keywords.insert("and".to_string(), TokenType::And);
+        keywords.insert("class".to_string(), TokenType::Class);
+        keywords.insert("else".to_string(), TokenType::Else);
+        keywords.insert("false".to_string(), TokenType::False);
+        keywords.insert("for".to_string(), TokenType::For);
+        keywords.insert("fun".to_string(), TokenType::Fun);
+        keywords.insert("if".to_string(), TokenType::If);
+        keywords.insert("nil".to_string(), TokenType::Nil);
+        keywords.insert("or".to_string(), TokenType::Or);
+        keywords.insert("print".to_string(), TokenType::Print);
+        keywords.insert("return".to_string(), TokenType::Return);
+        keywords.insert("super".to_string(), TokenType::Super);
+        keywords.insert("this".to_string(), TokenType::This);
+        keywords.insert("true".to_string(), TokenType::True);
+        keywords.insert("var".to_string(), TokenType::Var);
+        keywords.insert("while".to_string(), TokenType::While);
+
         Scanner {
             source: source.chars().collect(),
             tokens: Vec::new(),
@@ -18,6 +40,7 @@ impl Scanner {
             current: 0,
             line: 1,
             had_error: false,
+            keywords,
         }
     }
 
@@ -98,6 +121,9 @@ impl Scanner {
                 }
             }
 
+            // String.
+            '"' => self.string(),
+
             // Whitespace.
             ' ' | '\r' | '\t' => {
                 // Ignore whitespace.
@@ -108,8 +134,70 @@ impl Scanner {
                 self.line += 1;
             }
 
-            _ => self.error("Unexpected character."),
+            _ => {
+                if self.is_digit(c) {
+                    self.number();
+                } else if self.is_alpha(c) {
+                    self.identifier();
+                } else {
+                    self.error("Unexpected character.");
+                }
+            }
         }
+    }
+
+    fn is_alpha(&self, c: char) -> bool {
+        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+    }
+
+    fn is_alpha_numeric(&self, c: char) -> bool {
+        self.is_alpha(c) || self.is_digit(c)
+    }
+
+    fn identifier(&mut self) {
+        while self.is_alpha_numeric(self.peek()) {
+            self.advance();
+        }
+
+        let text: String = self.source[self.start..self.current].iter().collect();
+
+        let token_type = self
+            .keywords
+            .get(&text)
+            .cloned()
+            .unwrap_or(TokenType::Identifier);
+
+        self.add_token(token_type);
+    }
+
+    fn is_digit(&self, c: char) -> bool {
+        c >= '0' && c <= '9'
+    }
+
+    fn string(&mut self) {
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+
+            self.advance();
+        }
+
+        // Unterminated string.
+        if self.is_at_end() {
+            self.error("Unterminated string.");
+            return;
+        }
+
+        // Consume the closing ".
+        self.advance();
+
+        // Remove the surrounding quotes.
+        let value: String = self.source[self.start + 1..self.current - 1]
+            .iter()
+            .collect();
+
+        self.add_token_with_literal(TokenType::String, Some(Literal::String(value)));
     }
 
     fn match_char(&mut self, expected: char) -> bool {
@@ -124,6 +212,38 @@ impl Scanner {
         self.current += 1;
 
         true
+    }
+
+    fn number(&mut self) {
+        // Consume the integer part.
+        while self.is_digit(self.peek()) {
+            self.advance();
+        }
+
+        // Look for a fractional part.
+        if self.peek() == '.' && self.is_digit(self.peek_next()) {
+            // Consume the "."
+            self.advance();
+
+            // Consume the fractional part.
+            while self.is_digit(self.peek()) {
+                self.advance();
+            }
+        }
+
+        let text: String = self.source[self.start..self.current].iter().collect();
+
+        let value: f64 = text.parse().unwrap();
+
+        self.add_token_with_literal(TokenType::Number, Some(Literal::Number(value)));
+    }
+
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.len() {
+            '\0'
+        } else {
+            self.source[self.current + 1]
+        }
     }
 
     fn peek(&self) -> char {
