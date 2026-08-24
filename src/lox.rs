@@ -43,13 +43,17 @@ impl Lox {
     }
 
     fn run(&mut self, source: &str) {
-        let scanner = Scanner::new(source);
+        let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens();
+
+        if scanner.had_error() {
+            self.had_error = true;
+        }
 
         tokens.iter().for_each(|token| println!("{}", token));
     }
 
-    fn error(&mut self, line: i32, message: &str) {
+    pub fn error(&mut self, line: i32, message: &str) {
         self.report(line, "", message);
     }
 
