@@ -20,3 +20,7 @@ test:
 
 clean:
 	cargo clean
+
+generate-ast:
+	rustc tools/generate_ast.rs -o generate_ast
+	./generate_ast src/expr
