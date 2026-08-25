@@ -1,5 +1,9 @@
 use crate::token::{Literal, Token};
 
+mod ast_printer;
+
+pub use ast_printer::AstPrinter;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Binary {
@@ -20,7 +24,6 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>,
     },
-
 }
 
 #[cfg(test)]
