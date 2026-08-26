@@ -3,7 +3,12 @@ use std::{
     io::{self, Write},
 };
 
-use crate::scanner::Scanner;
+use crate::{
+    expr::AstPrinter,
+    parser::Parser,
+    scanner::Scanner,
+    token::{Token, TokenType},
+};
 
 pub struct Lox {
     had_error: bool,
@@ -46,19 +51,35 @@ impl Lox {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens();
 
-        if scanner.had_error() {
-            self.had_error = true;
+        let expression = {
+            let mut parser = Parser::new(tokens, self);
+            parser.parse()
+        };
+
+        if self.had_error {
+            return;
         }
 
-        tokens.iter().for_each(|token| println!("{}", token));
+        if let Some(expression) = expression {
+            println!("{}", AstPrinter::new().print(&expression));
+        }
     }
 
-    pub fn error(&mut self, line: i32, message: &str) {
+    pub fn error(&mut self, line: usize, message: &str) {
         self.report(line, "", message);
     }
 
-    fn report(&mut self, line: i32, location: &str, message: &str) {
-        eprintln!("[line {}] Error {}: {}", line, location, message);
+    pub fn error_token(&mut self, token: &Token, message: &str) {
+        if token.token_type == TokenType::Eof {
+            self.report(token.line, " at end", message);
+        } else {
+            self.report(token.line, &format!(" at '{}'", token.lexeme), message);
+        }
+    }
+
+    fn report(&mut self, line: usize, location: &str, message: &str) {
+        eprintln!("[line {}] Error{}: {}", line, location, message);
+
         self.had_error = true;
     }
 }

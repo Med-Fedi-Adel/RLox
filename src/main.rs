@@ -1,5 +1,6 @@
 mod expr;
 mod lox;
+mod parser;
 mod scanner;
 mod token;
 
