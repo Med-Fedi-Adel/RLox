@@ -82,7 +82,7 @@ impl Lox {
     pub fn runtime_error(&mut self, error: &crate::interpreter::RuntimeError) {
         eprintln!("{}\n[line {}]", error.message, error.token.line);
 
-        self.had_error = true;
+        self.had_runtime_error = true;
     }
 
     pub fn error(&mut self, line: usize, message: &str) {
