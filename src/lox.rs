@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{
-    expr::AstPrinter,
     interpreter::{self, Interpreter},
     parser::Parser,
     scanner::Scanner,
@@ -13,11 +12,15 @@ use crate::{
 
 pub struct Lox {
     had_error: bool,
+    had_runtime_error: bool,
 }
 
 impl Lox {
     pub fn new() -> Self {
-        Self { had_error: false }
+        Self {
+            had_error: false,
+            had_runtime_error: false,
+        }
     }
 
     pub fn run_file(&mut self, file_path: &str) {
@@ -28,6 +31,10 @@ impl Lox {
 
         if self.had_error {
             std::process::exit(65);
+        }
+
+        if self.had_runtime_error {
+            std::process::exit(70);
         }
     }
 
