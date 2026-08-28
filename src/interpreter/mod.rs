@@ -67,22 +67,27 @@ impl Interpreter {
         match operator.token_type {
             TokenType::Minus => self.number_binary(left, operator, right, |a, b| a - b),
 
-            TokenType::Slash => self.number_binary(left, operator, right, |a, b| a / b),
+            TokenType::Slash => {
+                match right {
+                    Literal::Number(value) => {
+                        if *value == 0.0 {
+                            return Err(RuntimeError::new(operator.clone(), "Division by zero."));
+                        }
+                    }
+                    _ => {
+                        return Err(RuntimeError::new(
+                            operator.clone(),
+                            "Operands must be numbers.",
+                        ));
+                    }
+                };
+
+                self.number_binary(left, operator, right, |a, b| a / b)
+            }
 
             TokenType::Star => self.number_binary(left, operator, right, |a, b| a * b),
 
-            TokenType::Plus => match (left, right) {
-                (Literal::Number(a), Literal::Number(b)) => Ok(Literal::Number(a + b)),
-
-                (Literal::String(a), Literal::String(b)) => {
-                    Ok(Literal::String(format!("{}{}", a, b)))
-                }
-
-                _ => Err(RuntimeError::new(
-                    operator.clone(),
-                    "Operands must be two numbers or two strings.",
-                )),
-            },
+            TokenType::Plus => self.add(left, right, operator),
 
             TokenType::Greater => self.number_comparison(left, operator, right, |a, b| a > b),
 
@@ -97,6 +102,42 @@ impl Interpreter {
             TokenType::BangEqual => Ok(Literal::Boolean(!self.is_equal(left, right))),
 
             _ => unreachable!("Invalid binary operator"),
+        }
+    }
+
+    fn add(
+        &self,
+        left: &Literal,
+        right: &Literal,
+        operator: &Token,
+    ) -> Result<Literal, RuntimeError> {
+        match (left, right) {
+            // Number + Number
+            (Literal::Number(left), Literal::Number(right)) => Ok(Literal::Number(left + right)),
+
+            // String + String
+            (Literal::String(left), Literal::String(right)) => {
+                Ok(Literal::String(format!("{}{}", left, right)))
+            }
+
+            // String + anything
+            (Literal::String(left), right) => Ok(Literal::String(format!(
+                "{}{}",
+                left,
+                self.stringify(right)
+            ))),
+
+            // Anything + String
+            (left, Literal::String(right)) => Ok(Literal::String(format!(
+                "{}{}",
+                self.stringify(left),
+                right
+            ))),
+
+            _ => Err(RuntimeError::new(
+                operator.clone(),
+                "Operands must be two numbers or at least one string.",
+            )),
         }
     }
 
@@ -156,7 +197,7 @@ impl Interpreter {
         match value {
             Literal::Number(value) => {
                 if value.fract() == 0.0 {
-                    format!("{:.1}", value)
+                    format!("{:.0}", value)
                 } else {
                     value.to_string()
                 }
@@ -170,6 +211,8 @@ impl Interpreter {
         }
     }
 }
+
+#[derive(Debug)]
 pub struct RuntimeError {
     pub token: Token,
     pub message: String,
@@ -183,3 +226,6 @@ impl RuntimeError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

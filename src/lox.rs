@@ -52,6 +52,7 @@ impl Lox {
             }
 
             self.had_error = false;
+            self.had_runtime_error = false;
         }
     }
 
