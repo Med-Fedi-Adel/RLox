@@ -1,17 +1,22 @@
 use crate::{
+    environment::Environment,
     expr::Expr,
     stmt::Stmt,
     token::{Literal, Token, TokenType},
 };
 
-pub struct Interpreter;
+pub struct Interpreter {
+    environment: Environment,
+}
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self
+        Self {
+            environment: Environment::new(),
+        }
     }
 
-    pub fn interpret(&self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
         for statement in statements {
             self.execute(statement)?;
         }
@@ -19,7 +24,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn execute(&self, statement: &Stmt) -> Result<(), RuntimeError> {
+    fn execute(&mut self, statement: &Stmt) -> Result<(), RuntimeError> {
         match statement {
             Stmt::Expression { expression } => {
                 self.evaluate(expression)?;
@@ -31,14 +36,27 @@ impl Interpreter {
                 println!("{}", self.stringify(&value));
                 Ok(())
             }
+
+            Stmt::Var { name, initializer } => {
+                let value = match initializer {
+                    Some(expression) => self.evaluate(expression)?,
+                    None => Literal::Nil,
+                };
+
+                self.environment.define(name.lexeme.clone(), value);
+
+                Ok(())
+            }
         }
     }
 
-    fn evaluate(&self, expression: &Expr) -> Result<Literal, RuntimeError> {
+    fn evaluate(&mut self, expression: &Expr) -> Result<Literal, RuntimeError> {
         match expression {
             Expr::Literal { value } => Ok(value.clone()),
 
             Expr::Grouping { expression } => self.evaluate(expression),
+
+            Expr::Variable { name } => self.environment.get(name),
 
             Expr::Unary { operator, right } => {
                 let right = self.evaluate(right)?;

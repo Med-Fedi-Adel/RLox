@@ -431,3 +431,58 @@ fn requires_semicolon_after_print() {
 
     assert!(statements.is_empty());
 }
+
+#[test]
+fn parses_variable_declaration() {
+    let statements = parse("var beverage = \"espresso\";");
+
+    assert_eq!(statements.len(), 1);
+
+    match &statements[0] {
+        Stmt::Var { name, initializer } => {
+            assert_eq!(name.lexeme, "beverage");
+
+            assert_eq!(
+                initializer,
+                &Some(Expr::Literal {
+                    value: Literal::String("espresso".to_string())
+                })
+            );
+        }
+
+        _ => panic!("Expected variable declaration"),
+    }
+}
+
+#[test]
+fn parses_variable_without_initializer() {
+    let statements = parse("var beverage;");
+
+    assert_eq!(statements.len(), 1);
+
+    match &statements[0] {
+        Stmt::Var { name, initializer } => {
+            assert_eq!(name.lexeme, "beverage");
+            assert_eq!(initializer, &None);
+        }
+
+        _ => panic!("Expected variable declaration"),
+    }
+}
+
+#[test]
+fn parses_variable_expression() {
+    let statements = parse("beverage;");
+
+    assert_eq!(statements.len(), 1);
+
+    match &statements[0] {
+        Stmt::Expression {
+            expression: Expr::Variable { name },
+        } => {
+            assert_eq!(name.lexeme, "beverage");
+        }
+
+        _ => panic!("Expected variable expression"),
+    }
+}

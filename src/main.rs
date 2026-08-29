@@ -1,3 +1,4 @@
+mod environment;
 mod expr;
 mod interpreter;
 mod lox;

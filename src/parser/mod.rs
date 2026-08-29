@@ -27,7 +27,7 @@ impl<'a> Parser<'a> {
         let mut statements = Vec::new();
 
         while !self.is_at_end() {
-            match self.statement() {
+            match self.declaration() {
                 Ok(statement) => statements.push(statement),
                 Err(_) => {
                     self.synchronize();
@@ -36,6 +36,31 @@ impl<'a> Parser<'a> {
         }
 
         statements
+    }
+
+    fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.matches(&[TokenType::Var]) {
+            return self.var_declaration();
+        }
+
+        self.statement()
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
+
+        let initializer = if self.matches(&[TokenType::Equal]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        self.consume(
+            TokenType::Semicolon,
+            "Expect ';' after variable declaration.",
+        )?;
+
+        Ok(Stmt::Var { name, initializer })
     }
 
     fn statement(&mut self) -> Result<Stmt, ParseError> {
@@ -195,6 +220,12 @@ impl<'a> Parser<'a> {
 
             return Ok(Expr::Grouping {
                 expression: Box::new(expr),
+            });
+        }
+
+        if self.matches(&[TokenType::Identifier]) {
+            return Ok(Expr::Variable {
+                name: self.previous(),
             });
         }
 

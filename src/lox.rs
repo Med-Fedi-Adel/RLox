@@ -69,7 +69,7 @@ impl Lox {
             return;
         }
 
-        let interpreter = Interpreter::new();
+        let mut interpreter = Interpreter::new();
 
         if let Err(error) = interpreter.interpret(&statements) {
             self.runtime_error(&error);

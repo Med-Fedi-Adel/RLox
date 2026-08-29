@@ -49,7 +49,7 @@ fn addition_of_numbers() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     assert_number(result, 3.0);
@@ -67,7 +67,7 @@ fn string_concatenation() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     assert_string(result, "hello world");
@@ -85,7 +85,7 @@ fn string_plus_number_is_allowed() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     assert_string(result, "value: 42");
@@ -103,7 +103,7 @@ fn number_plus_string_is_allowed() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     assert_string(result, "42 apples");
@@ -127,7 +127,7 @@ fn unary_minus_times_grouping() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     assert_number(result, -5617.41);
@@ -145,7 +145,7 @@ fn division_by_zero_reports_runtime_error() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     assert_runtime_error(result, "Division by zero.");
@@ -160,7 +160,7 @@ fn unary_minus_on_non_number_reports_runtime_error() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     assert_runtime_error(result, "Operand must be a number.");
@@ -175,7 +175,7 @@ fn bang_negates_truthiness() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     match result {
@@ -193,7 +193,7 @@ fn nil_is_falsy() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     match result {
@@ -214,7 +214,7 @@ fn equality_compares_values() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     match result {
@@ -235,7 +235,7 @@ fn comparison_operands_must_be_numbers() {
         }),
     };
 
-    let interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
     assert_runtime_error(result, "Operands must be numbers.");
