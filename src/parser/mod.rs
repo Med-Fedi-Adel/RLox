@@ -1,6 +1,7 @@
 use crate::{
     expr::Expr,
     lox::Lox,
+    stmt::Stmt,
     token::{Literal, Token, TokenType},
 };
 
@@ -22,11 +23,43 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Option<Expr> {
-        match self.expression() {
-            Ok(expr) => Some(expr),
-            Err(_) => None,
+    pub fn parse(&mut self) -> Vec<Stmt> {
+        let mut statements = Vec::new();
+
+        while !self.is_at_end() {
+            match self.statement() {
+                Ok(statement) => statements.push(statement),
+                Err(_) => {
+                    self.synchronize();
+                }
+            }
         }
+
+        statements
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ParseError> {
+        if self.matches(&[TokenType::Print]) {
+            return self.print_statement();
+        }
+
+        return self.expression_statement();
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, ParseError> {
+        let value = self.expression()?;
+
+        self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
+
+        Ok(Stmt::Print { expression: value })
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
+        let expr = self.expression()?;
+
+        self.consume(TokenType::Semicolon, "Expect ';' after expression.")?;
+
+        Ok(Stmt::Expression { expression: expr })
     }
 
     // expression → equality ;

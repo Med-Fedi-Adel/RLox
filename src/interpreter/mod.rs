@@ -1,7 +1,6 @@
-use std::error::Error;
-
 use crate::{
     expr::Expr,
+    stmt::Stmt,
     token::{Literal, Token, TokenType},
 };
 
@@ -12,12 +11,27 @@ impl Interpreter {
         Self
     }
 
-    pub fn interpret(&self, expression: &Expr) -> Result<(), RuntimeError> {
-        let value = self.evaluate(expression)?;
-
-        println!("{}", self.stringify(&value));
+    pub fn interpret(&self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+        for statement in statements {
+            self.execute(statement)?;
+        }
 
         Ok(())
+    }
+
+    fn execute(&self, statement: &Stmt) -> Result<(), RuntimeError> {
+        match statement {
+            Stmt::Expression { expression } => {
+                self.evaluate(expression)?;
+                Ok(())
+            }
+
+            Stmt::Print { expression } => {
+                let value = self.evaluate(expression)?;
+                println!("{}", self.stringify(&value));
+                Ok(())
+            }
+        }
     }
 
     fn evaluate(&self, expression: &Expr) -> Result<Literal, RuntimeError> {

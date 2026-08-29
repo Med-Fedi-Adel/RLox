@@ -60,7 +60,7 @@ impl Lox {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens();
 
-        let expression = {
+        let statements = {
             let mut parser = Parser::new(tokens, self);
             parser.parse()
         };
@@ -69,13 +69,9 @@ impl Lox {
             return;
         }
 
-        let Some(expression) = expression else {
-            return;
-        };
-
         let interpreter = Interpreter::new();
 
-        if let Err(error) = interpreter.interpret(&expression) {
+        if let Err(error) = interpreter.interpret(&statements) {
             self.runtime_error(&error);
         }
     }

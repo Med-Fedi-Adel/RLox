@@ -3,10 +3,11 @@ use crate::{
     lox::Lox,
     parser::Parser,
     scanner::Scanner,
+    stmt::Stmt,
     token::{Literal, Token, TokenType},
 };
 
-fn parse(source: &str) -> Option<Expr> {
+fn parse(source: &str) -> Vec<Stmt> {
     let mut lox = Lox::new();
 
     let mut scanner = Scanner::new(source);
@@ -17,13 +18,25 @@ fn parse(source: &str) -> Option<Expr> {
     parser.parse()
 }
 
+fn parse_expression(source: &str) -> Expr {
+    let statements = parse(source);
+
+    assert_eq!(statements.len(), 1);
+
+    match &statements[0] {
+        Stmt::Expression { expression } => expression.clone(),
+
+        _ => panic!("Expected an expression statement"),
+    }
+}
+
 fn token(token_type: TokenType, lexeme: &str) -> Token {
     Token::new(token_type, lexeme.to_string(), None, 1)
 }
 
 #[test]
 fn parses_number_literal() {
-    let expr = parse("123").unwrap();
+    let expr = parse_expression("123;");
 
     assert_eq!(
         expr,
@@ -35,7 +48,7 @@ fn parses_number_literal() {
 
 #[test]
 fn parses_string_literal() {
-    let expr = parse("\"hello\"").unwrap();
+    let expr = parse_expression("\"hello\";");
 
     assert_eq!(
         expr,
@@ -47,7 +60,7 @@ fn parses_string_literal() {
 
 #[test]
 fn parses_true() {
-    let expr = parse("true").unwrap();
+    let expr = parse_expression("true;");
 
     assert_eq!(
         expr,
@@ -59,7 +72,7 @@ fn parses_true() {
 
 #[test]
 fn parses_false() {
-    let expr = parse("false").unwrap();
+    let expr = parse_expression("false;");
 
     assert_eq!(
         expr,
@@ -71,7 +84,7 @@ fn parses_false() {
 
 #[test]
 fn parses_nil() {
-    let expr = parse("nil").unwrap();
+    let expr = parse_expression("nil;");
 
     assert_eq!(
         expr,
@@ -83,12 +96,12 @@ fn parses_nil() {
 
 #[test]
 fn parses_unary_expression() {
-    let expr = parse("-123").unwrap();
+    let expr = parse_expression("-123;");
 
     assert_eq!(
         expr,
         Expr::Unary {
-            operator: crate::token::Token::new(TokenType::Minus, "-".to_string(), None, 1),
+            operator: token(TokenType::Minus, "-"),
             right: Box::new(Expr::Literal {
                 value: Literal::Number(123.0)
             }),
@@ -98,7 +111,7 @@ fn parses_unary_expression() {
 
 #[test]
 fn parses_binary_expression() {
-    let expr = parse("1 + 2").unwrap();
+    let expr = parse_expression("1 + 2;");
 
     assert_eq!(
         expr,
@@ -106,7 +119,7 @@ fn parses_binary_expression() {
             left: Box::new(Expr::Literal {
                 value: Literal::Number(1.0)
             }),
-            operator: crate::token::Token::new(TokenType::Plus, "+".to_string(), None, 1),
+            operator: token(TokenType::Plus, "+"),
             right: Box::new(Expr::Literal {
                 value: Literal::Number(2.0)
             }),
@@ -116,7 +129,7 @@ fn parses_binary_expression() {
 
 #[test]
 fn respects_multiplication_precedence() {
-    let expr = parse("1 + 2 * 3").unwrap();
+    let expr = parse_expression("1 + 2 * 3;");
 
     assert_eq!(
         expr,
@@ -124,12 +137,12 @@ fn respects_multiplication_precedence() {
             left: Box::new(Expr::Literal {
                 value: Literal::Number(1.0)
             }),
-            operator: crate::token::Token::new(TokenType::Plus, "+".to_string(), None, 1),
+            operator: token(TokenType::Plus, "+"),
             right: Box::new(Expr::Binary {
                 left: Box::new(Expr::Literal {
                     value: Literal::Number(2.0)
                 }),
-                operator: crate::token::Token::new(TokenType::Star, "*".to_string(), None, 1),
+                operator: token(TokenType::Star, "*"),
                 right: Box::new(Expr::Literal {
                     value: Literal::Number(3.0)
                 }),
@@ -140,7 +153,7 @@ fn respects_multiplication_precedence() {
 
 #[test]
 fn respects_parentheses() {
-    let expr = parse("(1 + 2) * 3").unwrap();
+    let expr = parse_expression("(1 + 2) * 3;");
 
     assert_eq!(
         expr,
@@ -150,13 +163,13 @@ fn respects_parentheses() {
                     left: Box::new(Expr::Literal {
                         value: Literal::Number(1.0)
                     }),
-                    operator: crate::token::Token::new(TokenType::Plus, "+".to_string(), None, 1),
+                    operator: token(TokenType::Plus, "+"),
                     right: Box::new(Expr::Literal {
                         value: Literal::Number(2.0)
                     }),
                 }),
             }),
-            operator: crate::token::Token::new(TokenType::Star, "*".to_string(), None, 1),
+            operator: token(TokenType::Star, "*"),
             right: Box::new(Expr::Literal {
                 value: Literal::Number(3.0)
             }),
@@ -166,18 +179,18 @@ fn respects_parentheses() {
 
 #[test]
 fn unary_has_higher_precedence_than_binary() {
-    let expr = parse("-1 + 2").unwrap();
+    let expr = parse_expression("-1 + 2;");
 
     assert_eq!(
         expr,
         Expr::Binary {
             left: Box::new(Expr::Unary {
-                operator: crate::token::Token::new(TokenType::Minus, "-".to_string(), None, 1),
+                operator: token(TokenType::Minus, "-"),
                 right: Box::new(Expr::Literal {
                     value: Literal::Number(1.0)
                 }),
             }),
-            operator: crate::token::Token::new(TokenType::Plus, "+".to_string(), None, 1),
+            operator: token(TokenType::Plus, "+"),
             right: Box::new(Expr::Literal {
                 value: Literal::Number(2.0)
             }),
@@ -187,7 +200,7 @@ fn unary_has_higher_precedence_than_binary() {
 
 #[test]
 fn binary_operators_are_left_associative() {
-    let expr = parse("1 - 2 - 3").unwrap();
+    let expr = parse_expression("1 - 2 - 3;");
 
     assert_eq!(
         expr,
@@ -196,12 +209,12 @@ fn binary_operators_are_left_associative() {
                 left: Box::new(Expr::Literal {
                     value: Literal::Number(1.0)
                 }),
-                operator: crate::token::Token::new(TokenType::Minus, "-".to_string(), None, 1),
+                operator: token(TokenType::Minus, "-"),
                 right: Box::new(Expr::Literal {
                     value: Literal::Number(2.0)
                 }),
             }),
-            operator: crate::token::Token::new(TokenType::Minus, "-".to_string(), None, 1),
+            operator: token(TokenType::Minus, "-"),
             right: Box::new(Expr::Literal {
                 value: Literal::Number(3.0)
             }),
@@ -211,7 +224,7 @@ fn binary_operators_are_left_associative() {
 
 #[test]
 fn parses_equality() {
-    let expr = parse("1 == 2").unwrap();
+    let expr = parse_expression("1 == 2;");
 
     assert_eq!(
         expr,
@@ -219,7 +232,7 @@ fn parses_equality() {
             left: Box::new(Expr::Literal {
                 value: Literal::Number(1.0)
             }),
-            operator: crate::token::Token::new(TokenType::EqualEqual, "==".to_string(), None, 1),
+            operator: token(TokenType::EqualEqual, "=="),
             right: Box::new(Expr::Literal {
                 value: Literal::Number(2.0)
             }),
@@ -229,7 +242,7 @@ fn parses_equality() {
 
 #[test]
 fn parses_comparison() {
-    let expr = parse("1 < 2").unwrap();
+    let expr = parse_expression("1 < 2;");
 
     assert_eq!(
         expr,
@@ -237,7 +250,7 @@ fn parses_comparison() {
             left: Box::new(Expr::Literal {
                 value: Literal::Number(1.0)
             }),
-            operator: crate::token::Token::new(TokenType::Less, "<".to_string(), None, 1),
+            operator: token(TokenType::Less, "<"),
             right: Box::new(Expr::Literal {
                 value: Literal::Number(2.0)
             }),
@@ -247,7 +260,7 @@ fn parses_comparison() {
 
 #[test]
 fn respects_comparison_over_equality() {
-    let expr = parse("1 < 2 == true").unwrap();
+    let expr = parse_expression("1 < 2 == true;");
 
     assert_eq!(
         expr,
@@ -256,12 +269,12 @@ fn respects_comparison_over_equality() {
                 left: Box::new(Expr::Literal {
                     value: Literal::Number(1.0)
                 }),
-                operator: crate::token::Token::new(TokenType::Less, "<".to_string(), None, 1),
+                operator: token(TokenType::Less, "<"),
                 right: Box::new(Expr::Literal {
                     value: Literal::Number(2.0)
                 }),
             }),
-            operator: crate::token::Token::new(TokenType::EqualEqual, "==".to_string(), None, 1),
+            operator: token(TokenType::EqualEqual, "=="),
             right: Box::new(Expr::Literal {
                 value: Literal::Boolean(true)
             }),
@@ -271,18 +284,18 @@ fn respects_comparison_over_equality() {
 
 #[test]
 fn parses_nested_expression() {
-    let expr = parse("-123 * (45.67)").unwrap();
+    let expr = parse_expression("-123 * (45.67);");
 
     assert_eq!(
         expr,
         Expr::Binary {
             left: Box::new(Expr::Unary {
-                operator: crate::token::Token::new(TokenType::Minus, "-".to_string(), None, 1),
+                operator: token(TokenType::Minus, "-"),
                 right: Box::new(Expr::Literal {
                     value: Literal::Number(123.0)
                 }),
             }),
-            operator: crate::token::Token::new(TokenType::Star, "*".to_string(), None, 1),
+            operator: token(TokenType::Star, "*"),
             right: Box::new(Expr::Grouping {
                 expression: Box::new(Expr::Literal {
                     value: Literal::Number(45.67)
@@ -294,27 +307,35 @@ fn parses_nested_expression() {
 
 #[test]
 fn rejects_missing_expression() {
-    assert!(parse("+").is_none());
+    let statements = parse("+;");
+
+    assert!(statements.is_empty());
 }
 
 #[test]
 fn rejects_missing_closing_parenthesis() {
-    assert!(parse("(1 + 2").is_none());
+    let statements = parse("(1 + 2;");
+
+    assert!(statements.is_empty());
 }
 
 #[test]
 fn rejects_empty_parentheses() {
-    assert!(parse("()").is_none());
+    let statements = parse("();");
+
+    assert!(statements.is_empty());
 }
 
 #[test]
 fn rejects_invalid_operator_sequence() {
-    assert!(parse("1 + * 2").is_none());
+    let statements = parse("1 + * 2;");
+
+    assert!(statements.is_empty());
 }
 
 #[test]
 fn respects_all_precedence_levels() {
-    let expr = parse("1 + 2 * 3 == 7").unwrap();
+    let expr = parse_expression("1 + 2 * 3 == 7;");
 
     assert_eq!(
         expr,
@@ -344,7 +365,7 @@ fn respects_all_precedence_levels() {
 
 #[test]
 fn scanner_parser_printer_integration() {
-    let source = "-123 * (45.67)";
+    let source = "-123 * (45.67);";
 
     let mut lox = Lox::new();
 
@@ -352,9 +373,61 @@ fn scanner_parser_printer_integration() {
     let tokens = scanner.scan_tokens();
 
     let mut parser = Parser::new(tokens, &mut lox);
-    let expression = parser.parse().unwrap();
+    let statements = parser.parse();
 
-    let output = AstPrinter::new().print(&expression);
+    assert_eq!(statements.len(), 1);
+
+    let expression = match &statements[0] {
+        Stmt::Expression { expression } => expression,
+        _ => panic!("Expected an expression statement"),
+    };
+
+    let output = AstPrinter::new().print(expression);
 
     assert_eq!(output, "(* (- 123) (group 45.67))");
+}
+
+#[test]
+fn parses_expression_statement() {
+    let statements = parse("1 + 2;");
+
+    assert_eq!(statements.len(), 1);
+
+    assert!(matches!(&statements[0], Stmt::Expression { .. }));
+}
+
+#[test]
+fn parses_print_statement() {
+    let statements = parse("print 123;");
+
+    assert_eq!(statements.len(), 1);
+
+    assert!(matches!(&statements[0], Stmt::Print { .. }));
+}
+
+#[test]
+fn parses_multiple_statements() {
+    let statements = parse(
+        r#"
+        print "one";
+        print true;
+        2 + 1;
+        "#,
+    );
+
+    assert_eq!(statements.len(), 3);
+}
+
+#[test]
+fn requires_semicolon_after_expression() {
+    let statements = parse("123");
+
+    assert!(statements.is_empty());
+}
+
+#[test]
+fn requires_semicolon_after_print() {
+    let statements = parse("print 123");
+
+    assert!(statements.is_empty());
 }
