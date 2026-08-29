@@ -28,6 +28,11 @@ pub enum Expr {
     Variable {
         name: Token,
     },
+
+    Assign {
+        name: Token,
+        value: Box<Expr>,
+    },
 }
 
 #[cfg(test)]

@@ -24,6 +24,11 @@ impl AstPrinter {
             }
 
             Expr::Variable { name } => name.lexeme.clone(),
+
+            Expr::Assign { name, value } => self.parenthesize(
+                "=",
+                &[&Expr::Variable { name: name.clone() }, value.as_ref()],
+            ),
         }
     }
 

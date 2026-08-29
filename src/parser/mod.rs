@@ -87,9 +87,26 @@ impl<'a> Parser<'a> {
         Ok(Stmt::Expression { expression: expr })
     }
 
-    // expression → equality ;
+    // expression → assignment ;
     fn expression(&mut self) -> Result<Expr, ParseError> {
-        self.equality()
+        self.assignment()
+    }
+
+    // assignment -> INDENTIFIER "=" assignment | equality;
+    fn assignment(&mut self) -> Result<Expr, ParseError> {
+        let expr = self.equality()?;
+        if self.matches(&[TokenType::Equal]) {
+            let equals = self.previous();
+            let value = self.assignment()?;
+            if let Expr::Variable { name } = expr {
+                return Ok(Expr::Assign {
+                    name,
+                    value: Box::new(value),
+                });
+            }
+            self.error(&equals, "Invalid assignment target.");
+        }
+        Ok(expr)
     }
 
     // equality → comparison ( ( "!=" | "==" ) comparison )* ;
@@ -184,7 +201,7 @@ impl<'a> Parser<'a> {
         self.primary()
     }
 
-    // primary → NUMBER | STRING | "true" | "false" | "nil"
+    // primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
     // | "(" expression ")" ;
     fn primary(&mut self) -> Result<Expr, ParseError> {
         if self.matches(&[TokenType::False]) {

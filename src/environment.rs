@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::interpreter::RuntimeError;
-use crate::token::Token;
+use crate::token::{Literal, Token};
 
 pub struct Environment {
     values: HashMap<String, crate::token::Literal>,
@@ -27,5 +27,16 @@ impl Environment {
                 format!("Undefined variable '{}'.", name.lexeme),
             )),
         }
+    }
+
+    pub fn assign(&mut self, name: &Token, value: Literal) -> Result<(), RuntimeError> {
+        if self.values.contains_key(&name.lexeme) {
+            self.values.insert(name.lexeme.clone(), value);
+            return Ok(());
+        }
+        Err(RuntimeError::new(
+            name.clone(),
+            format!("Undefined variable '{}'.", name.lexeme),
+        ))
     }
 }
