@@ -24,6 +24,10 @@ impl Interpreter {
         Ok(())
     }
 
+    pub fn evaluate_expression(&mut self, expression: &Expr) -> Result<Literal, RuntimeError> {
+        self.evaluate(expression)
+    }
+
     fn execute(&mut self, statement: &Stmt) -> Result<(), RuntimeError> {
         match statement {
             Stmt::Expression { expression } => {
@@ -39,8 +43,8 @@ impl Interpreter {
 
             Stmt::Var { name, initializer } => {
                 let value = match initializer {
-                    Some(expression) => self.evaluate(expression)?,
-                    None => Literal::Nil,
+                    Some(expression) => Some(self.evaluate(expression)?),
+                    None => None,
                 };
 
                 self.environment
@@ -263,7 +267,7 @@ impl Interpreter {
         left == right
     }
 
-    fn stringify(&self, value: &Literal) -> String {
+    pub fn stringify(&self, value: &Literal) -> String {
         match value {
             Literal::Number(value) => {
                 if value.fract() == 0.0 {

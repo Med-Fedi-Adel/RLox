@@ -29,7 +29,7 @@ impl Lox {
         let contents =
             fs::read_to_string(file_path).expect("Should have been able to read that file");
 
-        self.run(&contents);
+        self.run(&contents, false);
 
         if self.had_error {
             std::process::exit(65);
@@ -49,7 +49,7 @@ impl Lox {
 
             match io::stdin().read_line(&mut line) {
                 Ok(0) => break,
-                Ok(_) => self.run(&line),
+                Ok(_) => self.run(&line, true),
                 Err(_) => break,
             }
 
@@ -58,7 +58,7 @@ impl Lox {
         }
     }
 
-    fn run(&mut self, source: &str) {
+    fn run(&mut self, source: &str, print_expression: bool) {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens();
 
@@ -71,8 +71,26 @@ impl Lox {
             return;
         }
 
-        if let Err(error) = self.interpreter.interpret(&statements) {
-            self.runtime_error(&error);
+        for statement in &statements {
+            match statement {
+                crate::stmt::Stmt::Expression { expression } if print_expression => {
+                    match self.interpreter.evaluate_expression(expression) {
+                        Ok(value) => println!("{}", self.interpreter.stringify(&value)),
+                        Err(error) => {
+                            self.runtime_error(&error);
+                            return;
+                        }
+                    }
+                }
+
+                _ => {
+                    if let Err(error) = self.interpreter.interpret(std::slice::from_ref(statement))
+                    {
+                        self.runtime_error(&error);
+                        return;
+                    }
+                }
+            }
         }
     }
 

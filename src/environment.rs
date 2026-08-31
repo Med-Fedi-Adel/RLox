@@ -8,7 +8,7 @@ use crate::token::{Literal, Token};
 pub type EnvironmentRef = Rc<RefCell<Environment>>;
 
 pub struct Environment {
-    values: HashMap<String, crate::token::Literal>,
+    values: HashMap<String, Option<crate::token::Literal>>,
     enclosing: Option<EnvironmentRef>,
 }
 
@@ -27,28 +27,35 @@ impl Environment {
         }))
     }
 
-    pub fn define(&mut self, name: String, value: crate::token::Literal) {
+    pub fn define(&mut self, name: String, value: Option<crate::token::Literal>) {
         self.values.insert(name, value);
     }
 
     pub fn get(&self, name: &Token) -> Result<crate::token::Literal, RuntimeError> {
-        if let Some(value) = self.values.get(&name.lexeme) {
-            return Ok(value.clone());
-        }
+        match self.values.get(&name.lexeme) {
+            Some(Some(value)) => Ok(value.clone()),
 
-        if let Some(enclosing) = &self.enclosing {
-            return enclosing.borrow().get(name);
-        }
+            Some(None) => Err(RuntimeError::new(
+                name.clone(),
+                format!("Uninitialized variable '{}'.", name.lexeme),
+            )),
 
-        Err(RuntimeError::new(
-            name.clone(),
-            format!("Undefined variable '{}'.", name.lexeme),
-        ))
+            None => {
+                if let Some(enclosing) = &self.enclosing {
+                    return enclosing.borrow().get(name);
+                }
+
+                Err(RuntimeError::new(
+                    name.clone(),
+                    format!("Undefined variable '{}'.", name.lexeme),
+                ))
+            }
+        }
     }
 
     pub fn assign(&mut self, name: &Token, value: Literal) -> Result<(), RuntimeError> {
         if self.values.contains_key(&name.lexeme) {
-            self.values.insert(name.lexeme.clone(), value);
+            self.values.insert(name.lexeme.clone(), Some(value));
             return Ok(());
         }
 
