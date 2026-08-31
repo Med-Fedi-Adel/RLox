@@ -1,12 +1,12 @@
 use crate::{
-    environment::Environment,
+    environment::{self, Environment, EnvironmentRef},
     expr::Expr,
     stmt::Stmt,
     token::{Literal, Token, TokenType},
 };
 
 pub struct Interpreter {
-    environment: Environment,
+    environment: EnvironmentRef,
 }
 
 impl Interpreter {
@@ -43,11 +43,41 @@ impl Interpreter {
                     None => Literal::Nil,
                 };
 
-                self.environment.define(name.lexeme.clone(), value);
+                self.environment
+                    .borrow_mut()
+                    .define(name.lexeme.clone(), value);
 
                 Ok(())
             }
+
+            Stmt::Block { statements } => {
+                let environment = Environment::from(self.environment.clone());
+
+                self.execute_block(statements, environment)
+            }
         }
+    }
+
+    fn execute_block(
+        &mut self,
+        statements: &[Stmt],
+        environment: EnvironmentRef,
+    ) -> Result<(), RuntimeError> {
+        let previous = self.environment.clone();
+
+        self.environment = environment;
+
+        let result = (|| {
+            for statement in statements {
+                self.execute(statement)?;
+            }
+
+            Ok(())
+        })();
+
+        self.environment = previous;
+
+        result
     }
 
     fn evaluate(&mut self, expression: &Expr) -> Result<Literal, RuntimeError> {
@@ -56,12 +86,12 @@ impl Interpreter {
 
             Expr::Grouping { expression } => self.evaluate(expression),
 
-            Expr::Variable { name } => self.environment.get(name),
+            Expr::Variable { name } => self.environment.borrow().get(name),
 
             Expr::Assign { name, value } => {
                 let value = self.evaluate(value)?;
 
-                self.environment.assign(name, value.clone())?;
+                self.environment.borrow_mut().assign(name, value.clone())?;
 
                 Ok(value)
             }

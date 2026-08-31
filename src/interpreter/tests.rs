@@ -1,12 +1,35 @@
 use crate::{
     expr::Expr,
+    lox::Lox,
+    parser::Parser,
+    scanner::Scanner,
     token::{Literal, Token, TokenType},
 };
 
 use super::Interpreter;
 
+fn interpret(source: &str) -> Result<(), super::RuntimeError> {
+    let mut lox = Lox::new();
+
+    let mut scanner = Scanner::new(source);
+    let tokens = scanner.scan_tokens();
+
+    let mut parser = Parser::new(tokens, &mut lox);
+    let statements = parser.parse();
+
+    let mut interpreter = Interpreter::new();
+    interpreter.interpret(&statements)
+}
+
 fn token(token_type: TokenType, lexeme: &str) -> Token {
     Token::new(token_type, lexeme.to_string(), None, 1)
+}
+
+fn assert_interpret_runtime_error(result: Result<(), super::RuntimeError>, expected_message: &str) {
+    match result {
+        Err(error) => assert_eq!(error.message, expected_message),
+        Ok(_) => panic!("expected RuntimeError({expected_message:?}), got Ok"),
+    }
 }
 
 fn assert_number(result: Result<Literal, super::RuntimeError>, expected: f64) {
@@ -239,4 +262,157 @@ fn comparison_operands_must_be_numbers() {
     let result = interpreter.evaluate(&expression);
 
     assert_runtime_error(result, "Operands must be numbers.");
+}
+
+#[test]
+fn local_variable_is_accessible_inside_block() {
+    let result = interpret(
+        r#"
+        {
+            var a = "inside";
+            print a;
+        }
+        "#,
+    );
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn local_variable_is_not_accessible_outside_block() {
+    let result = interpret(
+        r#"
+        {
+            var a = "inside";
+        }
+
+        print a;
+        "#,
+    );
+
+    assert_interpret_runtime_error(result, "Undefined variable 'a'.");
+}
+
+#[test]
+fn local_variable_shadows_global_variable() {
+    let result = interpret(
+        r#"
+        var a = "global";
+
+        {
+            var a = "local";
+            print a;
+        }
+
+        print a;
+        "#,
+    );
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn nested_block_can_access_outer_variable() {
+    let result = interpret(
+        r#"
+        var a = "global";
+
+        {
+            var b = "outer";
+
+            {
+                var c = "inner";
+
+                print a;
+                print b;
+                print c;
+            }
+        }
+        "#,
+    );
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn nested_blocks_shadow_variables_correctly() {
+    let result = interpret(
+        r#"
+        var a = "global a";
+        var b = "global b";
+        var c = "global c";
+
+        {
+            var a = "outer a";
+            var b = "outer b";
+
+            {
+                var a = "inner a";
+
+                print a;
+                print b;
+                print c;
+            }
+
+            print a;
+            print b;
+            print c;
+        }
+
+        print a;
+        print b;
+        print c;
+        "#,
+    );
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn assignment_updates_variable_in_enclosing_scope() {
+    let result = interpret(
+        r#"
+        var a = "global";
+
+        {
+            a = "modified";
+        }
+
+        print a;
+        "#,
+    );
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn assignment_updates_shadowing_local_variable() {
+    let result = interpret(
+        r#"
+        var a = "global";
+
+        {
+            var a = "local";
+            a = "modified";
+            print a;
+        }
+
+        print a;
+        "#,
+    );
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn assignment_to_undefined_variable_is_runtime_error() {
+    let result = interpret(
+        r#"
+        {
+            a = "value";
+        }
+        "#,
+    );
+
+    assert_interpret_runtime_error(result, "Undefined variable 'a'.");
 }

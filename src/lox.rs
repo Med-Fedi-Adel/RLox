@@ -13,6 +13,7 @@ use crate::{
 pub struct Lox {
     had_error: bool,
     had_runtime_error: bool,
+    interpreter: Interpreter,
 }
 
 impl Lox {
@@ -20,6 +21,7 @@ impl Lox {
         Self {
             had_error: false,
             had_runtime_error: false,
+            interpreter: Interpreter::new(),
         }
     }
 
@@ -69,9 +71,7 @@ impl Lox {
             return;
         }
 
-        let mut interpreter = Interpreter::new();
-
-        if let Err(error) = interpreter.interpret(&statements) {
+        if let Err(error) = self.interpreter.interpret(&statements) {
             self.runtime_error(&error);
         }
     }
