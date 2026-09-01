@@ -75,6 +75,20 @@ impl Interpreter {
 
                 Ok(())
             }
+
+            Stmt::While { condition, body } => {
+                loop {
+                    let condition_value = self.evaluate(condition)?;
+
+                    if !self.is_truthy(&condition_value) {
+                        break;
+                    }
+
+                    self.execute(body)?;
+                }
+
+                Ok(())
+            }
         }
     }
 
