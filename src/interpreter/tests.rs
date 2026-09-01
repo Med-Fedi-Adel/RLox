@@ -416,3 +416,137 @@ fn assignment_to_undefined_variable_is_runtime_error() {
 
     assert_interpret_runtime_error(result, "Undefined variable 'a'.");
 }
+
+#[test]
+fn if_executes_then_branch_when_condition_is_truthy() {
+    let statement = crate::stmt::Stmt::If {
+        condition: Expr::Literal {
+            value: Literal::Boolean(true),
+        },
+
+        then_branch: Box::new(crate::stmt::Stmt::Expression {
+            expression: Expr::Assign {
+                name: token(TokenType::Identifier, "a"),
+                value: Box::new(Expr::Literal {
+                    value: Literal::String("then".to_string()),
+                }),
+            },
+        }),
+
+        else_branch: Some(Box::new(crate::stmt::Stmt::Expression {
+            expression: Expr::Assign {
+                name: token(TokenType::Identifier, "a"),
+                value: Box::new(Expr::Literal {
+                    value: Literal::String("else".to_string()),
+                }),
+            },
+        })),
+    };
+
+    let mut interpreter = Interpreter::new();
+
+    // Define a first.
+    interpreter
+        .interpret(&[crate::stmt::Stmt::Var {
+            name: token(TokenType::Identifier, "a"),
+            initializer: Some(Expr::Literal {
+                value: Literal::String("before".to_string()),
+            }),
+        }])
+        .unwrap();
+
+    // Execute if.
+    interpreter.interpret(&[statement]).unwrap();
+
+    // Verify that the then branch executed.
+    let result = interpreter.evaluate(&Expr::Variable {
+        name: token(TokenType::Identifier, "a"),
+    });
+
+    assert_string(result, "then");
+}
+
+#[test]
+fn if_executes_else_branch_when_condition_is_falsey() {
+    let statement = crate::stmt::Stmt::If {
+        condition: Expr::Literal {
+            value: Literal::Boolean(false),
+        },
+
+        then_branch: Box::new(crate::stmt::Stmt::Expression {
+            expression: Expr::Assign {
+                name: token(TokenType::Identifier, "a"),
+                value: Box::new(Expr::Literal {
+                    value: Literal::String("then".to_string()),
+                }),
+            },
+        }),
+
+        else_branch: Some(Box::new(crate::stmt::Stmt::Expression {
+            expression: Expr::Assign {
+                name: token(TokenType::Identifier, "a"),
+                value: Box::new(Expr::Literal {
+                    value: Literal::String("else".to_string()),
+                }),
+            },
+        })),
+    };
+
+    let mut interpreter = Interpreter::new();
+
+    interpreter
+        .interpret(&[crate::stmt::Stmt::Var {
+            name: token(TokenType::Identifier, "a"),
+            initializer: Some(Expr::Literal {
+                value: Literal::String("before".to_string()),
+            }),
+        }])
+        .unwrap();
+
+    interpreter.interpret(&[statement]).unwrap();
+
+    let result = interpreter.evaluate(&Expr::Variable {
+        name: token(TokenType::Identifier, "a"),
+    });
+
+    assert_string(result, "else");
+}
+
+#[test]
+fn if_without_else_does_nothing_when_false() {
+    let statement = crate::stmt::Stmt::If {
+        condition: Expr::Literal {
+            value: Literal::Boolean(false),
+        },
+
+        then_branch: Box::new(crate::stmt::Stmt::Expression {
+            expression: Expr::Assign {
+                name: token(TokenType::Identifier, "a"),
+                value: Box::new(Expr::Literal {
+                    value: Literal::String("changed".to_string()),
+                }),
+            },
+        }),
+
+        else_branch: None,
+    };
+
+    let mut interpreter = Interpreter::new();
+
+    interpreter
+        .interpret(&[crate::stmt::Stmt::Var {
+            name: token(TokenType::Identifier, "a"),
+            initializer: Some(Expr::Literal {
+                value: Literal::String("before".to_string()),
+            }),
+        }])
+        .unwrap();
+
+    interpreter.interpret(&[statement]).unwrap();
+
+    let result = interpreter.evaluate(&Expr::Variable {
+        name: token(TokenType::Identifier, "a"),
+    });
+
+    assert_string(result, "before");
+}
