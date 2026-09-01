@@ -33,6 +33,12 @@ pub enum Expr {
         name: Token,
         value: Box<Expr>,
     },
+
+    Logical {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
+    },
 }
 
 #[cfg(test)]

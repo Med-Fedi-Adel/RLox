@@ -29,6 +29,12 @@ impl AstPrinter {
                 "=",
                 &[&Expr::Variable { name: name.clone() }, value.as_ref()],
             ),
+
+            Expr::Logical {
+                left,
+                operator,
+                right,
+            } => self.parenthesize(&operator.lexeme, &[left.as_ref(), right.as_ref()]),
         }
     }
 

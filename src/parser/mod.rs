@@ -142,7 +142,8 @@ impl<'a> Parser<'a> {
 
     // assignment -> INDENTIFIER "=" assignment | equality;
     fn assignment(&mut self) -> Result<Expr, ParseError> {
-        let expr = self.equality()?;
+        let expr = self.logic_or()?;
+
         if self.matches(&[TokenType::Equal]) {
             let equals = self.previous();
             let value = self.assignment()?;
@@ -154,6 +155,41 @@ impl<'a> Parser<'a> {
             }
             self.error(&equals, "Invalid assignment target.");
         }
+
+        Ok(expr)
+    }
+
+    fn logic_or(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.logic_and()?;
+
+        while self.matches(&[TokenType::Or]) {
+            let operator = self.previous().clone();
+            let right = self.logic_and()?;
+
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn logic_and(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.equality()?;
+
+        while self.matches(&[TokenType::And]) {
+            let operator = self.previous().clone();
+            let right = self.equality()?;
+
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            }
+        }
+
         Ok(expr)
     }
 

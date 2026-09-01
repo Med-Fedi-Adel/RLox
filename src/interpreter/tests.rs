@@ -60,6 +60,14 @@ fn assert_runtime_error(result: Result<Literal, super::RuntimeError>, expected_m
     }
 }
 
+fn assert_boolean(result: Result<Literal, super::RuntimeError>, expected: bool) {
+    match result {
+        Ok(Literal::Boolean(value)) => assert_eq!(value, expected),
+        Ok(other) => panic!("expected Boolean({expected}), got {:?}", other),
+        Err(e) => panic!("expected Ok(Boolean({expected})), got Err: {}", e.message),
+    }
+}
+
 #[test]
 fn addition_of_numbers() {
     let expression = Expr::Binary {
@@ -549,4 +557,112 @@ fn if_without_else_does_nothing_when_false() {
     });
 
     assert_string(result, "before");
+}
+
+#[test]
+fn logical_or_returns_left_when_truthy() {
+    let expression = Expr::Logical {
+        left: Box::new(Expr::Literal {
+            value: Literal::String("hi".to_string()),
+        }),
+        operator: token(TokenType::Or, "or"),
+        right: Box::new(Expr::Literal {
+            value: Literal::Number(2.0),
+        }),
+    };
+
+    let mut interpreter = Interpreter::new();
+    let result = interpreter.evaluate(&expression);
+
+    assert_string(result, "hi");
+}
+
+#[test]
+fn logical_or_returns_right_when_left_is_falsey() {
+    let expression = Expr::Logical {
+        left: Box::new(Expr::Literal {
+            value: Literal::Nil,
+        }),
+        operator: token(TokenType::Or, "or"),
+        right: Box::new(Expr::Literal {
+            value: Literal::String("yes".to_string()),
+        }),
+    };
+
+    let mut interpreter = Interpreter::new();
+    let result = interpreter.evaluate(&expression);
+
+    assert_string(result, "yes");
+}
+
+#[test]
+fn logical_and_returns_left_when_falsey() {
+    let expression = Expr::Logical {
+        left: Box::new(Expr::Literal {
+            value: Literal::Boolean(false),
+        }),
+        operator: token(TokenType::And, "and"),
+        right: Box::new(Expr::Literal {
+            value: Literal::String("never".to_string()),
+        }),
+    };
+
+    let mut interpreter = Interpreter::new();
+    let result = interpreter.evaluate(&expression);
+
+    assert_boolean(result, false);
+}
+
+#[test]
+fn logical_and_returns_right_when_left_is_truthy() {
+    let expression = Expr::Logical {
+        left: Box::new(Expr::Literal {
+            value: Literal::Boolean(true),
+        }),
+        operator: token(TokenType::And, "and"),
+        right: Box::new(Expr::Literal {
+            value: Literal::String("yes".to_string()),
+        }),
+    };
+
+    let mut interpreter = Interpreter::new();
+    let result = interpreter.evaluate(&expression);
+
+    assert_string(result, "yes");
+}
+
+#[test]
+fn logical_and_short_circuits() {
+    let expression = Expr::Logical {
+        left: Box::new(Expr::Literal {
+            value: Literal::Boolean(false),
+        }),
+        operator: token(TokenType::And, "and"),
+        right: Box::new(Expr::Variable {
+            name: token(TokenType::Identifier, "undefined"),
+        }),
+    };
+
+    let mut interpreter = Interpreter::new();
+    let result = interpreter.evaluate(&expression);
+
+    assert_boolean(result, false);
+}
+
+#[test]
+fn logical_or_short_circuits() {
+    let expression = Expr::Logical {
+        left: Box::new(Expr::Literal {
+            value: Literal::Boolean(true),
+        }),
+        operator: token(TokenType::Or, "or"),
+        right: Box::new(Expr::Variable {
+            name: token(TokenType::Identifier, "undefined"),
+        }),
+    };
+
+    let mut interpreter = Interpreter::new();
+    let result = interpreter.evaluate(&expression);
+
+    assert_boolean(result, true);
 }

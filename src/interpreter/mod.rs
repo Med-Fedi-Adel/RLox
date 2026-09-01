@@ -145,6 +145,26 @@ impl Interpreter {
 
                 self.evaluate_binary(&left, operator, &right)
             }
+
+            Expr::Logical {
+                left,
+                operator,
+                right,
+            } => {
+                let left = self.evaluate(left)?;
+
+                if operator.token_type == TokenType::Or {
+                    if self.is_truthy(&left) {
+                        return Ok(left);
+                    }
+                } else {
+                    if !self.is_truthy(&left) {
+                        return Ok(left);
+                    }
+                }
+
+                self.evaluate(right)
+            }
         }
     }
 
