@@ -1,4 +1,6 @@
-use std::fmt;
+use std::{fmt, rc::Rc};
+
+use crate::interpreter::LoxCallable;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
@@ -58,6 +60,12 @@ pub enum Literal {
     String(String),
     Boolean(bool),
     Nil,
+}
+
+#[derive(Clone)]
+pub enum Value {
+    Literal(Literal),
+    Callable(Rc<dyn LoxCallable>),
 }
 
 impl fmt::Display for Literal {

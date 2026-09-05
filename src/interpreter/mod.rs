@@ -1,8 +1,9 @@
 use crate::{
     environment::{self, Environment, EnvironmentRef},
     expr::Expr,
+    interpreter,
     stmt::Stmt,
-    token::{Literal, Token, TokenType},
+    token::{Literal, Token, TokenType, Value},
 };
 
 pub struct Interpreter {
@@ -27,7 +28,7 @@ impl Interpreter {
         ExecutionResult::Success
     }
 
-    pub fn evaluate_expression(&mut self, expression: &Expr) -> Result<Literal, RuntimeError> {
+    pub fn evaluate_expression(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
         self.evaluate(expression)
     }
 
@@ -137,7 +138,7 @@ impl Interpreter {
         result
     }
 
-    fn evaluate(&mut self, expression: &Expr) -> Result<Literal, RuntimeError> {
+    fn evaluate(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
         match expression {
             Expr::Literal { value } => Ok(value.clone()),
 
@@ -201,6 +202,14 @@ impl Interpreter {
                 }
 
                 self.evaluate(right)
+            }
+
+            Expr::Call {
+                callee,
+                paren,
+                arguments,
+            } => {
+                todo!()
             }
         }
     }
@@ -378,6 +387,16 @@ pub enum ExecutionResult {
     Success,
     RuntimeError(RuntimeError),
     Break,
+}
+
+pub trait LoxCallable {
+    fn call(
+        &self,
+        interpreter: &mut Interpreter,
+        arguments: Vec<Literal>,
+    ) -> Result<Literal, RuntimeError>;
+
+    fn arity(&self) -> usize;
 }
 
 #[cfg(test)]
