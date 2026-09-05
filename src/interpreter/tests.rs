@@ -1,5 +1,6 @@
 use crate::{
     expr::Expr,
+    interpreter::ExecutionResult,
     lox::Lox,
     parser::Parser,
     scanner::Scanner,
@@ -8,7 +9,7 @@ use crate::{
 
 use super::Interpreter;
 
-fn interpret(source: &str) -> Result<(), super::RuntimeError> {
+fn interpret(source: &str) -> ExecutionResult {
     let mut lox = Lox::new();
 
     let mut scanner = Scanner::new(source);
@@ -25,10 +26,17 @@ fn token(token_type: TokenType, lexeme: &str) -> Token {
     Token::new(token_type, lexeme.to_string(), None, 1)
 }
 
-fn assert_interpret_runtime_error(result: Result<(), super::RuntimeError>, expected_message: &str) {
+fn assert_interpret_runtime_error(result: ExecutionResult, expected_message: &str) {
     match result {
-        Err(error) => assert_eq!(error.message, expected_message),
-        Ok(_) => panic!("expected RuntimeError({expected_message:?}), got Ok"),
+        ExecutionResult::RuntimeError(error) => {
+            assert_eq!(error.message, expected_message)
+        }
+        ExecutionResult::Success => {
+            panic!("expected RuntimeError({expected_message:?}), got Success")
+        }
+        ExecutionResult::Break => {
+            panic!("expected RuntimeError({expected_message:?}), got Break")
+        }
     }
 }
 
@@ -283,7 +291,7 @@ fn local_variable_is_accessible_inside_block() {
         "#,
     );
 
-    assert!(result.is_ok());
+    assert!(matches!(result, ExecutionResult::Success));
 }
 
 #[test]
@@ -316,7 +324,7 @@ fn local_variable_shadows_global_variable() {
         "#,
     );
 
-    assert!(result.is_ok());
+    assert!(matches!(result, ExecutionResult::Success));
 }
 
 #[test]
@@ -339,7 +347,7 @@ fn nested_block_can_access_outer_variable() {
         "#,
     );
 
-    assert!(result.is_ok());
+    assert!(matches!(result, ExecutionResult::Success));
 }
 
 #[test]
@@ -373,7 +381,7 @@ fn nested_blocks_shadow_variables_correctly() {
         "#,
     );
 
-    assert!(result.is_ok());
+    assert!(matches!(result, ExecutionResult::Success));
 }
 
 #[test]
@@ -390,7 +398,7 @@ fn assignment_updates_variable_in_enclosing_scope() {
         "#,
     );
 
-    assert!(result.is_ok());
+    assert!(matches!(result, ExecutionResult::Success));
 }
 
 #[test]
@@ -409,7 +417,7 @@ fn assignment_updates_shadowing_local_variable() {
         "#,
     );
 
-    assert!(result.is_ok());
+    assert!(matches!(result, ExecutionResult::Success));
 }
 
 #[test]
@@ -454,17 +462,21 @@ fn if_executes_then_branch_when_condition_is_truthy() {
     let mut interpreter = Interpreter::new();
 
     // Define a first.
-    interpreter
-        .interpret(&[crate::stmt::Stmt::Var {
+    assert!(matches!(
+        interpreter.interpret(&[crate::stmt::Stmt::Var {
             name: token(TokenType::Identifier, "a"),
             initializer: Some(Expr::Literal {
                 value: Literal::String("before".to_string()),
             }),
-        }])
-        .unwrap();
+        }]),
+        ExecutionResult::Success
+    ));
 
     // Execute if.
-    interpreter.interpret(&[statement]).unwrap();
+    assert!(matches!(
+        interpreter.interpret(&[statement]),
+        ExecutionResult::Success
+    ));
 
     // Verify that the then branch executed.
     let result = interpreter.evaluate(&Expr::Variable {
@@ -502,16 +514,20 @@ fn if_executes_else_branch_when_condition_is_falsey() {
 
     let mut interpreter = Interpreter::new();
 
-    interpreter
-        .interpret(&[crate::stmt::Stmt::Var {
+    assert!(matches!(
+        interpreter.interpret(&[crate::stmt::Stmt::Var {
             name: token(TokenType::Identifier, "a"),
             initializer: Some(Expr::Literal {
                 value: Literal::String("before".to_string()),
             }),
-        }])
-        .unwrap();
+        }]),
+        ExecutionResult::Success
+    ));
 
-    interpreter.interpret(&[statement]).unwrap();
+    assert!(matches!(
+        interpreter.interpret(&[statement]),
+        ExecutionResult::Success
+    ));
 
     let result = interpreter.evaluate(&Expr::Variable {
         name: token(TokenType::Identifier, "a"),
@@ -541,16 +557,20 @@ fn if_without_else_does_nothing_when_false() {
 
     let mut interpreter = Interpreter::new();
 
-    interpreter
-        .interpret(&[crate::stmt::Stmt::Var {
+    assert!(matches!(
+        interpreter.interpret(&[crate::stmt::Stmt::Var {
             name: token(TokenType::Identifier, "a"),
             initializer: Some(Expr::Literal {
                 value: Literal::String("before".to_string()),
             }),
-        }])
-        .unwrap();
+        }]),
+        ExecutionResult::Success
+    ));
 
-    interpreter.interpret(&[statement]).unwrap();
+    assert!(matches!(
+        interpreter.interpret(&[statement]),
+        ExecutionResult::Success
+    ));
 
     let result = interpreter.evaluate(&Expr::Variable {
         name: token(TokenType::Identifier, "a"),
@@ -665,4 +685,43 @@ fn logical_or_short_circuits() {
     let result = interpreter.evaluate(&expression);
 
     assert_boolean(result, true);
+}
+
+#[test]
+fn break_returns_break_execution_result() {
+    let statement = crate::stmt::Stmt::Break;
+
+    let mut interpreter = Interpreter::new();
+
+    let result = interpreter.interpret(&[statement]);
+
+    assert!(matches!(result, ExecutionResult::Break));
+}
+
+#[test]
+fn break_exits_while_loop() {
+    let result = interpret(
+        r#"
+        while (true) {
+            break;
+        }
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn break_inside_if_exits_loop() {
+    let result = interpret(
+        r#"
+        while (true) {
+            if (true) {
+                break;
+            }
+        }
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
 }

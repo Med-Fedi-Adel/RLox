@@ -16,34 +16,41 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, statements: &[Stmt]) -> ExecutionResult {
         for statement in statements {
-            self.execute(statement)?;
+            match self.execute(statement) {
+                ExecutionResult::Success => {}
+                result => return result,
+            }
         }
 
-        Ok(())
+        ExecutionResult::Success
     }
 
     pub fn evaluate_expression(&mut self, expression: &Expr) -> Result<Literal, RuntimeError> {
         self.evaluate(expression)
     }
 
-    fn execute(&mut self, statement: &Stmt) -> Result<(), RuntimeError> {
+    fn execute(&mut self, statement: &Stmt) -> ExecutionResult {
         match statement {
-            Stmt::Expression { expression } => {
-                self.evaluate(expression)?;
-                Ok(())
-            }
+            Stmt::Expression { expression } => match self.evaluate(expression) {
+                Ok(_) => ExecutionResult::Success,
+                Err(error) => ExecutionResult::RuntimeError(error),
+            },
 
-            Stmt::Print { expression } => {
-                let value = self.evaluate(expression)?;
-                println!("{}", self.stringify(&value));
-                Ok(())
-            }
-
+            Stmt::Print { expression } => match self.evaluate(expression) {
+                Ok(value) => {
+                    println!("{}", self.stringify(&value));
+                    ExecutionResult::Success
+                }
+                Err(error) => ExecutionResult::RuntimeError(error),
+            },
             Stmt::Var { name, initializer } => {
                 let value = match initializer {
-                    Some(expression) => Some(self.evaluate(expression)?),
+                    Some(expression) => match self.evaluate(expression) {
+                        Ok(value) => Some(value),
+                        Err(error) => return ExecutionResult::RuntimeError(error),
+                    },
                     None => None,
                 };
 
@@ -51,7 +58,7 @@ impl Interpreter {
                     .borrow_mut()
                     .define(name.lexeme.clone(), value);
 
-                Ok(())
+                ExecutionResult::Success
             }
 
             Stmt::Block { statements } => {
@@ -65,30 +72,43 @@ impl Interpreter {
                 then_branch,
                 else_branch,
             } => {
-                let condition = self.evaluate(condition)?;
+                let condition = match self.evaluate(condition) {
+                    Ok(value) => value,
+                    Err(error) => return ExecutionResult::RuntimeError(error),
+                };
 
                 if self.is_truthy(&condition) {
-                    self.execute(then_branch)?;
+                    self.execute(then_branch)
                 } else if let Some(else_branch) = else_branch {
-                    self.execute(else_branch)?;
+                    self.execute(else_branch)
+                } else {
+                    ExecutionResult::Success
                 }
-
-                Ok(())
             }
 
             Stmt::While { condition, body } => {
                 loop {
-                    let condition_value = self.evaluate(condition)?;
+                    let condition_value = match self.evaluate(condition) {
+                        Ok(value) => value,
+                        Err(error) => return ExecutionResult::RuntimeError(error),
+                    };
 
                     if !self.is_truthy(&condition_value) {
                         break;
                     }
 
-                    self.execute(body)?;
+                    match self.execute(body) {
+                        ExecutionResult::Success => {}
+                        ExecutionResult::Break => break,
+                        ExecutionResult::RuntimeError(error) => {
+                            return ExecutionResult::RuntimeError(error);
+                        }
+                    }
                 }
 
-                Ok(())
+                ExecutionResult::Success
             }
+            Stmt::Break => ExecutionResult::Break,
         }
     }
 
@@ -96,17 +116,20 @@ impl Interpreter {
         &mut self,
         statements: &[Stmt],
         environment: EnvironmentRef,
-    ) -> Result<(), RuntimeError> {
+    ) -> ExecutionResult {
         let previous = self.environment.clone();
 
         self.environment = environment;
 
         let result = (|| {
             for statement in statements {
-                self.execute(statement)?;
+                match self.execute(statement) {
+                    ExecutionResult::Success => {}
+                    result => return result,
+                }
             }
 
-            Ok(())
+            ExecutionResult::Success
         })();
 
         self.environment = previous;
@@ -349,6 +372,12 @@ impl RuntimeError {
             message: message.into(),
         }
     }
+}
+
+pub enum ExecutionResult {
+    Success,
+    RuntimeError(RuntimeError),
+    Break,
 }
 
 #[cfg(test)]

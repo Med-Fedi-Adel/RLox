@@ -28,4 +28,6 @@ pub enum Stmt {
         condition: Expr,
         body: Box<Stmt>,
     },
+
+    Break,
 }

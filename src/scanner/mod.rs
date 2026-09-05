@@ -32,6 +32,7 @@ impl Scanner {
         keywords.insert("true".to_string(), TokenType::True);
         keywords.insert("var".to_string(), TokenType::Var);
         keywords.insert("while".to_string(), TokenType::While);
+        keywords.insert("break".to_string(), TokenType::Break);
 
         Scanner {
             source: source.chars().collect(),

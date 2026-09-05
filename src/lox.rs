@@ -84,10 +84,19 @@ impl Lox {
                 }
 
                 _ => {
-                    if let Err(error) = self.interpreter.interpret(std::slice::from_ref(statement))
-                    {
-                        self.runtime_error(&error);
-                        return;
+                    match self.interpreter.interpret(std::slice::from_ref(statement)) {
+                        interpreter::ExecutionResult::Success => {}
+
+                        interpreter::ExecutionResult::RuntimeError(error) => {
+                            self.runtime_error(&error);
+                            return;
+                        }
+
+                        interpreter::ExecutionResult::Break => {
+                            // This should normally be impossible because
+                            // the parser only allows `break` inside a loop.
+                            unreachable!("break escaped a loop");
+                        }
                     }
                 }
             }

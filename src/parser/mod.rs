@@ -12,6 +12,7 @@ pub struct Parser<'a> {
     tokens: Vec<Token>,
     current: usize,
     lox: &'a mut Lox,
+    loop_depth: usize,
 }
 
 impl<'a> Parser<'a> {
@@ -20,6 +21,7 @@ impl<'a> Parser<'a> {
             tokens,
             current: 0,
             lox,
+            loop_depth: 0,
         }
     }
 
@@ -80,6 +82,10 @@ impl<'a> Parser<'a> {
             return self.while_statement();
         }
 
+        if self.matches(&[TokenType::Break]) {
+            return self.break_statement();
+        }
+
         if self.matches(&[TokenType::LeftBrace]) {
             return Ok(Stmt::Block {
                 statements: self.block()?,
@@ -87,6 +93,18 @@ impl<'a> Parser<'a> {
         }
 
         return self.expression_statement();
+    }
+
+    fn break_statement(&mut self) -> Result<Stmt, ParseError> {
+        let keyword = self.previous();
+
+        if self.loop_depth == 0 {
+            return Err(self.error(&keyword, "Cannot use 'break' outside of a loop."));
+        }
+
+        self.consume(TokenType::Semicolon, "Expect ';' after 'break'.")?;
+
+        Ok(Stmt::Break)
     }
 
     fn for_statement(&mut self) -> Result<Stmt, ParseError> {
@@ -116,7 +134,9 @@ impl<'a> Parser<'a> {
 
         self.consume(TokenType::RightParen, "Expect ')' after clauses.")?;
 
+        self.loop_depth += 1;
         let mut body = self.statement()?;
+        self.loop_depth -= 1;
 
         if let Some(increment) = increment {
             body = Stmt::Block {
@@ -154,7 +174,9 @@ impl<'a> Parser<'a> {
 
         self.consume(TokenType::RightParen, "Expect ')' after condition.")?;
 
+        self.loop_depth += 1;
         let body = self.statement()?;
+        self.loop_depth -= 1;
 
         Ok(Stmt::While {
             condition,
