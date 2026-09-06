@@ -35,6 +35,14 @@ impl AstPrinter {
                 operator,
                 right,
             } => self.parenthesize(&operator.lexeme, &[left.as_ref(), right.as_ref()]),
+
+            Expr::Call {
+                callee,
+                paren,
+                arguments,
+            } => {
+                todo!()
+            }
         }
     }
 

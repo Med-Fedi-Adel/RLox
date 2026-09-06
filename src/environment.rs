@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::interpreter::RuntimeError;
-use crate::token::{Literal, Token};
+use crate::token::{Token, Value};
 
 pub type EnvironmentRef = Rc<RefCell<Environment>>;
 
 pub struct Environment {
-    values: HashMap<String, Option<crate::token::Literal>>,
+    values: HashMap<String, Option<Value>>,
     enclosing: Option<EnvironmentRef>,
 }
 
@@ -27,11 +27,11 @@ impl Environment {
         }))
     }
 
-    pub fn define(&mut self, name: String, value: Option<crate::token::Literal>) {
+    pub fn define(&mut self, name: String, value: Option<Value>) {
         self.values.insert(name, value);
     }
 
-    pub fn get(&self, name: &Token) -> Result<crate::token::Literal, RuntimeError> {
+    pub fn get(&self, name: &Token) -> Result<Value, RuntimeError> {
         match self.values.get(&name.lexeme) {
             Some(Some(value)) => Ok(value.clone()),
 
@@ -53,7 +53,7 @@ impl Environment {
         }
     }
 
-    pub fn assign(&mut self, name: &Token, value: Literal) -> Result<(), RuntimeError> {
+    pub fn assign(&mut self, name: &Token, value: Value) -> Result<(), RuntimeError> {
         if self.values.contains_key(&name.lexeme) {
             self.values.insert(name.lexeme.clone(), Some(value));
             return Ok(());

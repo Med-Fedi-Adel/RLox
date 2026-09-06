@@ -68,6 +68,15 @@ pub enum Value {
     Callable(Rc<dyn LoxCallable>),
 }
 
+impl fmt::Debug for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::Literal(value) => f.debug_tuple("Literal").field(value).finish(),
+            Value::Callable(_) => write!(f, "Callable"),
+        }
+    }
+}
+
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

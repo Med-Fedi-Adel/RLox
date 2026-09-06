@@ -4,7 +4,7 @@ use crate::{
     lox::Lox,
     parser::Parser,
     scanner::Scanner,
-    token::{Literal, Token, TokenType},
+    token::{Literal, Token, TokenType, Value},
 };
 
 use super::Interpreter;
@@ -40,9 +40,9 @@ fn assert_interpret_runtime_error(result: ExecutionResult, expected_message: &st
     }
 }
 
-fn assert_number(result: Result<Literal, super::RuntimeError>, expected: f64) {
+fn assert_number(result: Result<Value, super::RuntimeError>, expected: f64) {
     match result {
-        Ok(Literal::Number(n)) => {
+        Ok(Value::Literal(Literal::Number(n))) => {
             assert!((n - expected).abs() < 1e-9, "expected {expected}, got {n}");
         }
         Ok(other) => panic!("expected Number({expected}), got {:?}", other),
@@ -50,15 +50,15 @@ fn assert_number(result: Result<Literal, super::RuntimeError>, expected: f64) {
     }
 }
 
-fn assert_string(result: Result<Literal, super::RuntimeError>, expected: &str) {
+fn assert_string(result: Result<Value, super::RuntimeError>, expected: &str) {
     match result {
-        Ok(Literal::String(s)) => assert_eq!(s, expected),
+        Ok(Value::Literal(Literal::String(s))) => assert_eq!(s, expected),
         Ok(other) => panic!("expected String({expected:?}), got {:?}", other),
         Err(e) => panic!("expected Ok(String({expected:?})), got Err: {}", e.message),
     }
 }
 
-fn assert_runtime_error(result: Result<Literal, super::RuntimeError>, expected_message: &str) {
+fn assert_runtime_error(result: Result<Value, super::RuntimeError>, expected_message: &str) {
     match result {
         Err(e) => assert_eq!(e.message, expected_message),
         Ok(value) => panic!(
@@ -68,9 +68,9 @@ fn assert_runtime_error(result: Result<Literal, super::RuntimeError>, expected_m
     }
 }
 
-fn assert_boolean(result: Result<Literal, super::RuntimeError>, expected: bool) {
+fn assert_boolean(result: Result<Value, super::RuntimeError>, expected: bool) {
     match result {
-        Ok(Literal::Boolean(value)) => assert_eq!(value, expected),
+        Ok(Value::Literal(Literal::Boolean(value))) => assert_eq!(value, expected),
         Ok(other) => panic!("expected Boolean({expected}), got {:?}", other),
         Err(e) => panic!("expected Ok(Boolean({expected})), got Err: {}", e.message),
     }
@@ -218,7 +218,7 @@ fn bang_negates_truthiness() {
     let result = interpreter.evaluate(&expression);
 
     match result {
-        Ok(Literal::Boolean(b)) => assert!(b),
+        Ok(Value::Literal(Literal::Boolean(b))) => assert!(b),
         other => panic!("expected Ok(Boolean(true)), got {:?}", other),
     }
 }
@@ -236,7 +236,7 @@ fn nil_is_falsy() {
     let result = interpreter.evaluate(&expression);
 
     match result {
-        Ok(Literal::Boolean(b)) => assert!(b),
+        Ok(Value::Literal(Literal::Boolean(b))) => assert!(b),
         other => panic!("expected Ok(Boolean(true)), got {:?}", other),
     }
 }
@@ -257,7 +257,7 @@ fn equality_compares_values() {
     let result = interpreter.evaluate(&expression);
 
     match result {
-        Ok(Literal::Boolean(b)) => assert!(b),
+        Ok(Value::Literal(Literal::Boolean(b))) => assert!(b),
         other => panic!("expected Ok(Boolean(true)), got {:?}", other),
     }
 }
