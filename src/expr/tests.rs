@@ -134,3 +134,86 @@ fn prints_nested_logical_expression() {
 
     assert_eq!(AstPrinter::new().print(&expr), "(or a (and b c))");
 }
+
+#[test]
+fn prints_call_without_arguments() {
+    let expr = Expr::Call {
+        callee: Box::new(Expr::Variable {
+            name: token(TokenType::Identifier, "foo"),
+        }),
+        paren: token(TokenType::RightParen, ")"),
+        arguments: vec![],
+    };
+
+    assert_eq!(AstPrinter::new().print(&expr), "(call foo)");
+}
+
+#[test]
+fn prints_call_with_arguments() {
+    let expr = Expr::Call {
+        callee: Box::new(Expr::Variable {
+            name: token(TokenType::Identifier, "foo"),
+        }),
+        paren: token(TokenType::RightParen, ")"),
+        arguments: vec![
+            Expr::Literal {
+                value: Literal::Number(1.0),
+            },
+            Expr::Literal {
+                value: Literal::Number(2.0),
+            },
+        ],
+    };
+
+    assert_eq!(AstPrinter::new().print(&expr), "(call foo 1 2)");
+}
+
+#[test]
+fn prints_call_with_expression_arguments() {
+    let expr = Expr::Call {
+        callee: Box::new(Expr::Variable {
+            name: token(TokenType::Identifier, "foo"),
+        }),
+        paren: token(TokenType::RightParen, ")"),
+        arguments: vec![
+            Expr::Binary {
+                left: Box::new(Expr::Literal {
+                    value: Literal::Number(1.0),
+                }),
+                operator: token(TokenType::Plus, "+"),
+                right: Box::new(Expr::Literal {
+                    value: Literal::Number(2.0),
+                }),
+            },
+            Expr::Unary {
+                operator: token(TokenType::Minus, "-"),
+                right: Box::new(Expr::Literal {
+                    value: Literal::Number(3.0),
+                }),
+            },
+        ],
+    };
+
+    assert_eq!(AstPrinter::new().print(&expr), "(call foo (+ 1 2) (- 3))");
+}
+
+#[test]
+fn prints_nested_calls() {
+    let inner_call = Expr::Call {
+        callee: Box::new(Expr::Variable {
+            name: token(TokenType::Identifier, "foo"),
+        }),
+        paren: token(TokenType::RightParen, ")"),
+        arguments: vec![],
+    };
+
+    let expr = Expr::Call {
+        callee: Box::new(inner_call),
+        paren: token(TokenType::RightParen, ")"),
+        arguments: vec![Expr::Literal {
+            value: Literal::Number(42.0),
+        }],
+    };
+
+    assert_eq!(AstPrinter::new().print(&expr), "(call (call foo) 42)");
+}

@@ -37,11 +37,16 @@ impl AstPrinter {
             } => self.parenthesize(&operator.lexeme, &[left.as_ref(), right.as_ref()]),
 
             Expr::Call {
-                callee,
-                paren,
-                arguments,
+                callee, arguments, ..
             } => {
-                todo!()
+                let mut expressions = Vec::with_capacity(arguments.len() + 1);
+                expressions.push(callee.as_ref());
+
+                for argument in arguments {
+                    expressions.push(argument);
+                }
+
+                self.parenthesize("call", &expressions)
             }
         }
     }
