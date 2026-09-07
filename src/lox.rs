@@ -97,6 +97,14 @@ impl Lox {
                             // the parser only allows `break` inside a loop.
                             unreachable!("break escaped a loop");
                         }
+
+                        interpreter::ExecutionResult::Return(_) => {
+                            // No resolver yet to statically reject top-level
+                            // `return`, so a stray one here is just a no-op.
+                            // Once the resolver chapter is implemented, this
+                            // becomes unreachable like Break above.
+                            todo!()
+                        }
                     }
                 }
             }

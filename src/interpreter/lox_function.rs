@@ -42,6 +42,7 @@ impl LoxCallable for LoxFunction {
             ExecutionResult::Success => Ok(Value::Literal(Literal::Nil)),
             ExecutionResult::RuntimeError(error) => Err(error),
             ExecutionResult::Break => Ok(Value::Literal(Literal::Nil)),
+            ExecutionResult::Return(value) => Ok(value),
         }
     }
 

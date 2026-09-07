@@ -37,6 +37,9 @@ fn assert_interpret_runtime_error(result: ExecutionResult, expected_message: &st
         ExecutionResult::Break => {
             panic!("expected RuntimeError({expected_message:?}), got Break")
         }
+        ExecutionResult::Return(_) => {
+            panic!("expected RuntimeError({expected_message:?}), got Break")
+        }
     }
 }
 

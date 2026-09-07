@@ -115,6 +115,7 @@ impl Interpreter {
                         ExecutionResult::RuntimeError(error) => {
                             return ExecutionResult::RuntimeError(error);
                         }
+                        result @ ExecutionResult::Return(_) => return result,
                     }
                 }
 
@@ -136,6 +137,18 @@ impl Interpreter {
                 );
 
                 ExecutionResult::Success
+            }
+
+            Stmt::Return { keyword, value } => {
+                let return_value = match value {
+                    Some(expression) => match self.evaluate(expression) {
+                        Ok(value) => value,
+                        Err(error) => return ExecutionResult::RuntimeError(error),
+                    },
+                    None => Value::Literal(Literal::Nil),
+                };
+
+                ExecutionResult::Return(return_value)
             }
         }
     }
@@ -459,6 +472,7 @@ pub enum ExecutionResult {
     Success,
     RuntimeError(RuntimeError),
     Break,
+    Return(Value),
 }
 
 pub trait LoxCallable {
