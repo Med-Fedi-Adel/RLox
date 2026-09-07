@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     expr::Expr,
     lox::Lox,
@@ -41,11 +43,51 @@ impl<'a> Parser<'a> {
     }
 
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.matches(&[TokenType::Fun]) {
+            return self.function("function");
+        }
+
         if self.matches(&[TokenType::Var]) {
             return self.var_declaration();
         }
 
         self.statement()
+    }
+
+    fn function(&mut self, kind: &str) -> Result<Stmt, ParseError> {
+        let name = self.consume(TokenType::Identifier, &format!("Expect {} name.", kind))?;
+        self.consume(
+            TokenType::LeftParen,
+            &format!("Expect '(' after {} name.", kind),
+        )?;
+
+        let mut parameters: Vec<Token> = Vec::new();
+        if !self.check(TokenType::RightParen) {
+            loop {
+                if parameters.len() >= 255 {
+                    let token = self.peek().clone();
+                    return Err(self.error(&token, "Can't have more than 255 parameters."));
+                }
+                parameters.push(self.consume(TokenType::Identifier, "Expect parameter name.")?);
+                if !self.matches(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+        self.consume(TokenType::RightParen, "Expect ')' after parameters.")?;
+
+        self.consume(
+            TokenType::LeftBrace,
+            &format!("Expect '{{' before {} body.", kind),
+        )?;
+
+        let body = self.block()?;
+
+        Ok(Stmt::Function {
+            name,
+            parameters: Rc::new(parameters),
+            body: Rc::new(body),
+        })
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {

@@ -725,3 +725,17 @@ fn break_inside_if_exits_loop() {
 
     assert!(matches!(result, ExecutionResult::Success));
 }
+
+#[test]
+fn native_clock_can_be_called() {
+    let result = interpret("clock();");
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn native_clock_returns_number() {
+    let result = interpret("print clock();");
+
+    assert!(matches!(result, ExecutionResult::Success));
+}

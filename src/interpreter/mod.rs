@@ -1,19 +1,30 @@
+use std::rc::Rc;
+
 use crate::{
     environment::{self, Environment, EnvironmentRef},
     expr::Expr,
-    interpreter,
+    interpreter::{self, lox_function::LoxFunction},
     stmt::Stmt,
     token::{Literal, Token, TokenType, Value},
 };
 
 pub struct Interpreter {
+    globals: EnvironmentRef,
     environment: EnvironmentRef,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
+        let globals = Environment::new();
+
+        globals.borrow_mut().define(
+            "clock".to_string(),
+            Some(Value::Callable(Rc::new(NativeClock))),
+        );
+
         Self {
-            environment: Environment::new(),
+            globals: globals.clone(),
+            environment: globals,
         }
     }
 
@@ -109,7 +120,23 @@ impl Interpreter {
 
                 ExecutionResult::Success
             }
+
             Stmt::Break => ExecutionResult::Break,
+
+            Stmt::Function {
+                name,
+                parameters,
+                body,
+            } => {
+                let function = LoxFunction::new(name.clone(), parameters.clone(), body.clone());
+
+                self.environment.borrow_mut().define(
+                    name.lexeme.clone(),
+                    Some(Value::Callable(Rc::new(function))),
+                );
+
+                ExecutionResult::Success
+            }
         }
     }
 
@@ -408,7 +435,7 @@ impl Interpreter {
 
             Value::Literal(Literal::Nil) => "nil".to_string(),
 
-            Value::Callable(_) => "<fn>".to_string(),
+            Value::Callable(callable) => format!("<fn {}>", callable.name()),
         }
     }
 }
@@ -442,7 +469,36 @@ pub trait LoxCallable {
     ) -> Result<Value, RuntimeError>;
 
     fn arity(&self) -> usize;
+
+    fn name(&self) -> String;
+}
+
+struct NativeClock;
+
+impl LoxCallable for NativeClock {
+    fn arity(&self) -> usize {
+        0
+    }
+
+    fn call(
+        &self,
+        _interpreter: &mut Interpreter,
+        _arguments: Vec<Value>,
+    ) -> Result<Value, RuntimeError> {
+        let time = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+
+        Ok(Value::Literal(Literal::Number(time)))
+    }
+
+    fn name(&self) -> String {
+        "clock".to_string()
+    }
 }
 
 #[cfg(test)]
 mod tests;
+
+mod lox_function;

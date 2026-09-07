@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{expr::Expr, token::Token};
 
 pub enum Stmt {
@@ -30,4 +32,10 @@ pub enum Stmt {
     },
 
     Break,
+
+    Function {
+        name: Token,
+        parameters: Rc<Vec<Token>>,
+        body: Rc<Vec<Stmt>>,
+    },
 }

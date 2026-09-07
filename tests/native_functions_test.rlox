@@ -1,0 +1,31 @@
+// Native function test
+// `clock()` should return the current Unix time in seconds.
+
+print clock();
+print clock() > 0;
+
+// Variables and arithmetic
+var x = 10;
+var y = 20;
+
+print x + y;
+print x * y;
+print (x + y) / 2;
+
+// Functions / calls (if your function declarations are implemented)
+fun greet(name) {
+    print "Hello " + name;
+}
+
+greet("Fedi");
+
+// Nested expressions and calls
+print clock() + 1;
+
+// Recursive
+fun count(n) {
+  if (n > 1) count(n - 1);
+  print n;
+}
+
+count(3);
