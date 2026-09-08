@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use super::Expr;
 
 pub struct AstPrinter;
@@ -47,6 +49,12 @@ impl AstPrinter {
                 }
 
                 self.parenthesize("call", &expressions)
+            }
+
+            Expr::Function { params, .. } => {
+                let param_names: Vec<&str> =
+                    params.iter().map(|token| token.lexeme.as_str()).collect();
+                format!("(fun ({}) <body>)", param_names.join(" "))
             }
         }
     }

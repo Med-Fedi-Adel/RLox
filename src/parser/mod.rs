@@ -43,8 +43,9 @@ impl<'a> Parser<'a> {
     }
 
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
-        if self.matches(&[TokenType::Fun]) {
-            return self.function("function");
+        if self.check(TokenType::Fun) && self.check_next(TokenType::Identifier) {
+            self.advance();
+            return self.function_decl("function");
         }
 
         if self.matches(&[TokenType::Var]) {
@@ -54,8 +55,39 @@ impl<'a> Parser<'a> {
         self.statement()
     }
 
-    fn function(&mut self, kind: &str) -> Result<Stmt, ParseError> {
+    fn check_next(&self, token_type: TokenType) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+
+        match self.tokens.get(self.current + 1) {
+            Some(token) => token.token_type == token_type,
+            None => false,
+        }
+    }
+
+    // Used by declaration(): consumes name, then delegates.
+    fn function_decl(&mut self, kind: &str) -> Result<Stmt, ParseError> {
         let name = self.consume(TokenType::Identifier, &format!("Expect {} name.", kind))?;
+        let (parameters, body) = self.function_params_and_body(kind)?;
+        Ok(Stmt::Function {
+            name,
+            parameters,
+            body,
+        })
+    }
+
+    // Used by primary(): no name, produces an Expr.
+    fn function_body(&mut self, kind: &str) -> Result<Expr, ParseError> {
+        let (params, body) = self.function_params_and_body(kind)?;
+        Ok(Expr::Function { params, body })
+    }
+
+    // Shared: `(params) { body }`
+    fn function_params_and_body(
+        &mut self,
+        kind: &str,
+    ) -> Result<(Rc<Vec<Token>>, Rc<Vec<Stmt>>), ParseError> {
         self.consume(
             TokenType::LeftParen,
             &format!("Expect '(' after {} name.", kind),
@@ -66,7 +98,7 @@ impl<'a> Parser<'a> {
             loop {
                 if parameters.len() >= 255 {
                     let token = self.peek().clone();
-                    return Err(self.error(&token, "Can't have more than 255 parameters."));
+                    self.error(&token, "Can't have more than 255 parameters.");
                 }
                 parameters.push(self.consume(TokenType::Identifier, "Expect parameter name.")?);
                 if !self.matches(&[TokenType::Comma]) {
@@ -80,14 +112,9 @@ impl<'a> Parser<'a> {
             TokenType::LeftBrace,
             &format!("Expect '{{' before {} body.", kind),
         )?;
-
         let body = self.block()?;
 
-        Ok(Stmt::Function {
-            name,
-            parameters: Rc::new(parameters),
-            body: Rc::new(body),
-        })
+        Ok((Rc::new(parameters), Rc::new(body)))
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ParseError> {
@@ -487,6 +514,10 @@ impl<'a> Parser<'a> {
     // primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
     // | "(" expression ")" ;
     fn primary(&mut self) -> Result<Expr, ParseError> {
+        if self.matches(&[TokenType::Fun]) {
+            return self.function_body("function");
+        }
+
         if self.matches(&[TokenType::False]) {
             return Ok(Expr::Literal {
                 value: Literal::Boolean(false),

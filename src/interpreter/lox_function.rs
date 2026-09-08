@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct LoxFunction {
-    name: Token,
+    name: Option<Token>,
     params: Rc<Vec<Token>>,
     body: Rc<Vec<Stmt>>,
     closure: EnvironmentRef,
@@ -17,7 +17,7 @@ pub struct LoxFunction {
 
 impl LoxFunction {
     pub fn new(
-        name: Token,
+        name: Option<Token>,
         params: Rc<Vec<Token>>,
         body: Rc<Vec<Stmt>>,
         closure: EnvironmentRef,
@@ -58,6 +58,9 @@ impl LoxCallable for LoxFunction {
     }
 
     fn name(&self) -> String {
-        self.name.lexeme.clone()
+        self.name
+            .as_ref()
+            .map(|t| t.lexeme.clone())
+            .unwrap_or_else(|| "anonymous".to_string())
     }
 }

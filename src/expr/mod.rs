@@ -1,4 +1,9 @@
-use crate::token::{Literal, Token};
+use std::rc::Rc;
+
+use crate::{
+    stmt::Stmt,
+    token::{Literal, Token},
+};
 
 mod ast_printer;
 
@@ -44,6 +49,11 @@ pub enum Expr {
         callee: Box<Expr>,
         paren: Token,
         arguments: Vec<Expr>,
+    },
+
+    Function {
+        params: Rc<Vec<Token>>,
+        body: Rc<Vec<Stmt>>,
     },
 }
 

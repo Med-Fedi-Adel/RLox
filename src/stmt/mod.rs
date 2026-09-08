@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::{expr::Expr, token::Token};
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
     Expression {
         expression: Expr,

@@ -130,7 +130,7 @@ impl Interpreter {
                 body,
             } => {
                 let function = LoxFunction::new(
-                    name.clone(),
+                    Some(name.clone()),
                     parameters.clone(),
                     body.clone(),
                     self.environment.clone(),
@@ -287,6 +287,13 @@ impl Interpreter {
                         "Can only call functions and classes.",
                     )),
                 }
+            }
+
+            Expr::Function { params, body } => {
+                let function =
+                    LoxFunction::new(None, params.clone(), body.clone(), self.environment.clone());
+
+                Ok(Value::Callable(Rc::new(function)))
             }
         }
     }
