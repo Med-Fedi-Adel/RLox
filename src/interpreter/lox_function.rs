@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    environment::{self, Environment},
+    environment::{self, Environment, EnvironmentRef},
     interpreter::{ExecutionResult, LoxCallable},
     stmt::Stmt,
     token::{Literal, Token, Value},
@@ -12,11 +12,22 @@ pub struct LoxFunction {
     name: Token,
     params: Rc<Vec<Token>>,
     body: Rc<Vec<Stmt>>,
+    closure: EnvironmentRef,
 }
 
 impl LoxFunction {
-    pub fn new(name: Token, params: Rc<Vec<Token>>, body: Rc<Vec<Stmt>>) -> Self {
-        Self { name, params, body }
+    pub fn new(
+        name: Token,
+        params: Rc<Vec<Token>>,
+        body: Rc<Vec<Stmt>>,
+        closure: EnvironmentRef,
+    ) -> Self {
+        Self {
+            name,
+            params,
+            body,
+            closure,
+        }
     }
 }
 
@@ -30,7 +41,7 @@ impl LoxCallable for LoxFunction {
         interpreter: &mut super::Interpreter,
         arguments: Vec<crate::token::Value>,
     ) -> Result<crate::token::Value, super::RuntimeError> {
-        let environment = Environment::from(interpreter.globals.clone());
+        let environment = Environment::from(self.closure.clone());
 
         for (param, argument) in self.params.iter().zip(arguments.into_iter()) {
             environment

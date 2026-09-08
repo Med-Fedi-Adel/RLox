@@ -129,7 +129,12 @@ impl Interpreter {
                 parameters,
                 body,
             } => {
-                let function = LoxFunction::new(name.clone(), parameters.clone(), body.clone());
+                let function = LoxFunction::new(
+                    name.clone(),
+                    parameters.clone(),
+                    body.clone(),
+                    self.environment.clone(),
+                );
 
                 self.environment.borrow_mut().define(
                     name.lexeme.clone(),
