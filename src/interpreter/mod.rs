@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     environment::{self, Environment, EnvironmentRef},
@@ -11,6 +11,7 @@ use crate::{
 pub struct Interpreter {
     globals: EnvironmentRef,
     environment: EnvironmentRef,
+    locals: HashMap<usize, usize>,
 }
 
 impl Interpreter {
@@ -25,6 +26,7 @@ impl Interpreter {
         Self {
             globals: globals.clone(),
             environment: globals,
+            locals: HashMap::new(),
         }
     }
 
@@ -41,6 +43,10 @@ impl Interpreter {
 
     pub fn evaluate_expression(&mut self, expression: &Expr) -> Result<Value, RuntimeError> {
         self.evaluate(expression)
+    }
+
+    pub fn resolve(&mut self, id: usize, depth: usize) {
+        self.locals.insert(id, depth);
     }
 
     fn execute(&mut self, statement: &Stmt) -> ExecutionResult {
@@ -189,12 +195,21 @@ impl Interpreter {
 
             Expr::Grouping { expression } => self.evaluate(expression),
 
-            Expr::Variable { name } => self.environment.borrow().get(name),
+            Expr::Variable { id, name } => self.look_up_variable(*id, name),
 
-            Expr::Assign { name, value } => {
+            Expr::Assign { id, name, value } => {
                 let value = self.evaluate(value)?;
 
-                self.environment.borrow_mut().assign(name, value.clone())?;
+                if let Some(distance) = self.locals.get(id) {
+                    Environment::assign_at(
+                        self.environment.clone(),
+                        *distance,
+                        name,
+                        value.clone(),
+                    )?;
+                } else {
+                    self.globals.borrow_mut().assign(name, value.clone())?;
+                }
 
                 Ok(value)
             }
@@ -295,6 +310,14 @@ impl Interpreter {
 
                 Ok(Value::Callable(Rc::new(function)))
             }
+        }
+    }
+
+    fn look_up_variable(&self, id: usize, name: &Token) -> Result<Value, RuntimeError> {
+        if let Some(distance) = self.locals.get(&id) {
+            Environment::get_at(self.environment.clone(), *distance, name)
+        } else {
+            self.globals.borrow().get(name)
         }
     }
 

@@ -31,10 +31,12 @@ pub enum Expr {
     },
 
     Variable {
+        id: usize,
         name: Token,
     },
 
     Assign {
+        id: usize,
         name: Token,
         value: Box<Expr>,
     },

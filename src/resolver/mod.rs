@@ -1,14 +1,23 @@
 use std::{collections::HashMap, thread::scope};
 
-use crate::{expr::Expr, interpreter::Interpreter, stmt::Stmt, token::Token};
+use crate::{
+    expr::Expr,
+    interpreter::{self, Interpreter},
+    stmt::Stmt,
+    token::Token,
+};
 
-pub struct Resolver {
+pub struct Resolver<'a> {
+    interpreter: &'a mut Interpreter,
     scopes: Vec<HashMap<String, bool>>,
 }
 
-impl Resolver {
-    pub fn new() -> Self {
-        Self { scopes: Vec::new() }
+impl<'a> Resolver<'a> {
+    pub fn new(interpreter: &'a mut Interpreter) -> Self {
+        Self {
+            interpreter,
+            scopes: Vec::new(),
+        }
     }
 
     pub fn resolve(&mut self, statements: &[Stmt]) {
@@ -103,7 +112,7 @@ impl Resolver {
                 self.resolve_expr(right);
             }
 
-            Expr::Variable { name } => {
+            Expr::Variable { id, name } => {
                 if let Some(scope) = self.scopes.last() {
                     if let Some(false) = scope.get(&name.lexeme) {
                         println!(
@@ -112,11 +121,13 @@ impl Resolver {
                         );
                     }
                 }
+
+                self.resolve_local(*id, name);
             }
 
-            Expr::Assign { name, value } => {
+            Expr::Assign { id, name, value } => {
                 self.resolve_expr(value);
-                self.resolve_local(name);
+                self.resolve_local(*id, name);
             }
 
             Expr::Logical {
@@ -160,10 +171,10 @@ impl Resolver {
         self.end_scope();
     }
 
-    fn resolve_local(&self, name: &Token) {
+    fn resolve_local(&mut self, id: usize, name: &Token) {
         for (distance, scope) in self.scopes.iter().rev().enumerate() {
             if scope.contains_key(&name.lexeme) {
-                println!("Resolved '{}' at distance {}", name.lexeme, distance);
+                self.interpreter.resolve(id, distance);
                 return;
             }
         }
