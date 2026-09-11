@@ -1,0 +1,4 @@
+var value = "first";
+var value = "second";
+
+print value; // second

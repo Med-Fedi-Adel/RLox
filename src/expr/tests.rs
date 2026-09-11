@@ -75,6 +75,7 @@ fn prints_complex_expression() {
 #[test]
 fn prints_assignment() {
     let expr = Expr::Assign {
+        id: 0,
         name: token(TokenType::Identifier, "a"),
         value: Box::new(Expr::Literal {
             value: Literal::Number(42.0),
@@ -88,10 +89,12 @@ fn prints_assignment() {
 fn prints_logical_and() {
     let expr = Expr::Logical {
         left: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "a"),
         }),
         operator: token(TokenType::And, "and"),
         right: Box::new(Expr::Variable {
+            id: 1,
             name: token(TokenType::Identifier, "b"),
         }),
     };
@@ -103,10 +106,12 @@ fn prints_logical_and() {
 fn prints_logical_or() {
     let expr = Expr::Logical {
         left: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "a"),
         }),
         operator: token(TokenType::Or, "or"),
         right: Box::new(Expr::Variable {
+            id: 1,
             name: token(TokenType::Identifier, "b"),
         }),
     };
@@ -118,15 +123,18 @@ fn prints_logical_or() {
 fn prints_nested_logical_expression() {
     let expr = Expr::Logical {
         left: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "a"),
         }),
         operator: token(TokenType::Or, "or"),
         right: Box::new(Expr::Logical {
             left: Box::new(Expr::Variable {
+                id: 1,
                 name: token(TokenType::Identifier, "b"),
             }),
             operator: token(TokenType::And, "and"),
             right: Box::new(Expr::Variable {
+                id: 2,
                 name: token(TokenType::Identifier, "c"),
             }),
         }),
@@ -139,6 +147,7 @@ fn prints_nested_logical_expression() {
 fn prints_call_without_arguments() {
     let expr = Expr::Call {
         callee: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "foo"),
         }),
         paren: token(TokenType::RightParen, ")"),
@@ -152,6 +161,7 @@ fn prints_call_without_arguments() {
 fn prints_call_with_arguments() {
     let expr = Expr::Call {
         callee: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "foo"),
         }),
         paren: token(TokenType::RightParen, ")"),
@@ -172,6 +182,7 @@ fn prints_call_with_arguments() {
 fn prints_call_with_expression_arguments() {
     let expr = Expr::Call {
         callee: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "foo"),
         }),
         paren: token(TokenType::RightParen, ")"),
@@ -201,6 +212,7 @@ fn prints_call_with_expression_arguments() {
 fn prints_nested_calls() {
     let inner_call = Expr::Call {
         callee: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "foo"),
         }),
         paren: token(TokenType::RightParen, ")"),

@@ -1,0 +1,8 @@
+var value = "global";
+
+{
+  var value = value;
+}
+
+// Expected resolution error:
+// Can't read local variable in its own initializer.

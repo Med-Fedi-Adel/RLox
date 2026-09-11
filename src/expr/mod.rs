@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
+    expr_id::ExprId,
     stmt::Stmt,
     token::{Literal, Token},
 };
@@ -31,12 +32,12 @@ pub enum Expr {
     },
 
     Variable {
-        id: usize,
+        id: ExprId,
         name: Token,
     },
 
     Assign {
-        id: usize,
+        id: ExprId,
         name: Token,
         value: Box<Expr>,
     },

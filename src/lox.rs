@@ -4,8 +4,10 @@ use std::{
 };
 
 use crate::{
+    expr_id::{ExprId, ExprIdGenerator},
     interpreter::{self, Interpreter},
     parser::Parser,
+    resolver::Resolver,
     scanner::Scanner,
     token::{Token, TokenType},
 };
@@ -14,6 +16,7 @@ pub struct Lox {
     had_error: bool,
     had_runtime_error: bool,
     interpreter: Interpreter,
+    expr_id_generator: ExprIdGenerator,
 }
 
 impl Lox {
@@ -22,6 +25,7 @@ impl Lox {
             had_error: false,
             had_runtime_error: false,
             interpreter: Interpreter::new(),
+            expr_id_generator: ExprIdGenerator::new(),
         }
     }
 
@@ -66,6 +70,20 @@ impl Lox {
             let mut parser = Parser::new(tokens, self);
             parser.parse()
         };
+
+        if self.had_error {
+            return;
+        }
+
+        let resolution_erros = {
+            let mut resolver = Resolver::new(&mut self.interpreter);
+            resolver.resolve(&statements);
+            resolver.into_errors()
+        };
+
+        for error in resolution_erros {
+            self.error_token(&error.token, &error.message);
+        }
 
         if self.had_error {
             return;
@@ -133,5 +151,9 @@ impl Lox {
         eprintln!("[line {}] Error{}: {}", line, location, message);
 
         self.had_error = true;
+    }
+
+    pub fn next_expr_id(&mut self) -> ExprId {
+        self.expr_id_generator.next()
     }
 }

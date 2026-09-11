@@ -3,6 +3,7 @@ use std::{collections::HashMap, rc::Rc};
 use crate::{
     environment::{self, Environment, EnvironmentRef},
     expr::Expr,
+    expr_id::ExprId,
     interpreter::{self, lox_function::LoxFunction},
     stmt::Stmt,
     token::{Literal, Token, TokenType, Value},
@@ -11,7 +12,7 @@ use crate::{
 pub struct Interpreter {
     globals: EnvironmentRef,
     environment: EnvironmentRef,
-    locals: HashMap<usize, usize>,
+    locals: HashMap<ExprId, usize>,
 }
 
 impl Interpreter {
@@ -45,7 +46,7 @@ impl Interpreter {
         self.evaluate(expression)
     }
 
-    pub fn resolve(&mut self, id: usize, depth: usize) {
+    pub fn resolve(&mut self, id: ExprId, depth: usize) {
         self.locals.insert(id, depth);
     }
 
@@ -313,7 +314,7 @@ impl Interpreter {
         }
     }
 
-    fn look_up_variable(&self, id: usize, name: &Token) -> Result<Value, RuntimeError> {
+    fn look_up_variable(&self, id: ExprId, name: &Token) -> Result<Value, RuntimeError> {
         if let Some(distance) = self.locals.get(&id) {
             Environment::get_at(self.environment.clone(), *distance, name)
         } else {

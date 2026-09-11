@@ -2,14 +2,29 @@ use std::{collections::HashMap, thread::scope};
 
 use crate::{
     expr::Expr,
+    expr_id::ExprId,
     interpreter::{self, Interpreter},
     stmt::Stmt,
     token::Token,
 };
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum FunctionType {
+    None,
+    Function,
+}
+
+#[derive(Debug)]
+pub struct ResolutionError {
+    pub token: Token,
+    pub message: String,
+}
+
 pub struct Resolver<'a> {
     interpreter: &'a mut Interpreter,
     scopes: Vec<HashMap<String, bool>>,
+    current_function: FunctionType,
+    errors: Vec<ResolutionError>,
 }
 
 impl<'a> Resolver<'a> {
@@ -17,6 +32,8 @@ impl<'a> Resolver<'a> {
         Self {
             interpreter,
             scopes: Vec::new(),
+            current_function: FunctionType::None,
+            errors: Vec::new(),
         }
     }
 
@@ -78,10 +95,14 @@ impl<'a> Resolver<'a> {
                 self.declare(name);
                 self.define(name);
 
-                self.resolve_function(parameters, body);
+                self.resolve_function(parameters, body, FunctionType::Function);
             }
 
-            Stmt::Return { keyword: _, value } => {
+            Stmt::Return { keyword, value } => {
+                if self.current_function == FunctionType::None {
+                    self.error(keyword, "Can't return from top level code.");
+                }
+
                 if let Some(value) = value {
                     self.resolve_expr(value);
                 }
@@ -113,13 +134,11 @@ impl<'a> Resolver<'a> {
             }
 
             Expr::Variable { id, name } => {
-                if let Some(scope) = self.scopes.last() {
-                    if let Some(false) = scope.get(&name.lexeme) {
-                        println!(
-                            "Can't read local variable '{}' in its own initializer",
-                            name.lexeme
-                        );
-                    }
+                let read_in_own_initializer =
+                    self.scopes.last().and_then(|scope| scope.get(&name.lexeme)) == Some(&false);
+
+                if read_in_own_initializer {
+                    self.error(name, "Can't read local variable in its own initializer.");
                 }
 
                 self.resolve_local(*id, name);
@@ -152,13 +171,16 @@ impl<'a> Resolver<'a> {
             }
 
             Expr::Function { params, body } => {
-                self.resolve_function(params, body);
+                self.resolve_function(params, body, FunctionType::Function);
             }
             _ => {}
         }
     }
 
-    fn resolve_function(&mut self, params: &[Token], body: &[Stmt]) {
+    fn resolve_function(&mut self, params: &[Token], body: &[Stmt], function_type: FunctionType) {
+        let enclosing_function = self.current_function;
+        self.current_function = function_type;
+
         self.begin_scope();
 
         for param in params {
@@ -167,11 +189,12 @@ impl<'a> Resolver<'a> {
         }
 
         self.resolve(body);
-
         self.end_scope();
+
+        self.current_function = enclosing_function;
     }
 
-    fn resolve_local(&mut self, id: usize, name: &Token) {
+    fn resolve_local(&mut self, id: ExprId, name: &Token) {
         for (distance, scope) in self.scopes.iter().rev().enumerate() {
             if scope.contains_key(&name.lexeme) {
                 self.interpreter.resolve(id, distance);
@@ -184,9 +207,21 @@ impl<'a> Resolver<'a> {
         if self.scopes.is_empty() {
             return;
         }
-        let scope = self.scopes.last_mut().unwrap();
 
-        scope.insert(name.lexeme.clone(), false);
+        let already_declared = self
+            .scopes
+            .last_mut()
+            .expect("Resolver must have an active scope")
+            .contains_key(&name.lexeme);
+
+        if already_declared {
+            self.error(name, "Already a variable with this name in this scope.");
+        }
+
+        self.scopes
+            .last_mut()
+            .expect("Resolver must have an active scope")
+            .insert(name.lexeme.clone(), false);
     }
 
     fn define(&mut self, name: &Token) {
@@ -197,6 +232,17 @@ impl<'a> Resolver<'a> {
         let scope = self.scopes.last_mut().unwrap();
 
         scope.insert(name.lexeme.clone(), true);
+    }
+
+    fn error(&mut self, token: &Token, message: impl Into<String>) {
+        self.errors.push(ResolutionError {
+            token: token.clone(),
+            message: message.into(),
+        });
+    }
+
+    pub fn into_errors(self) -> Vec<ResolutionError> {
+        self.errors
     }
 
     fn begin_scope(&mut self) {

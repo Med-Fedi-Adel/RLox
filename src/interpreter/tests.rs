@@ -3,6 +3,7 @@ use crate::{
     interpreter::ExecutionResult,
     lox::Lox,
     parser::Parser,
+    resolver::Resolver,
     scanner::Scanner,
     token::{Literal, Token, TokenType, Value},
 };
@@ -11,14 +12,19 @@ use super::Interpreter;
 
 fn interpret(source: &str) -> ExecutionResult {
     let mut lox = Lox::new();
-
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
-
     let mut parser = Parser::new(tokens, &mut lox);
     let statements = parser.parse();
-
     let mut interpreter = Interpreter::new();
+
+    let errors = {
+        let mut resolver = Resolver::new(&mut interpreter);
+        resolver.resolve(&statements);
+        resolver.into_errors()
+    };
+
+    assert!(errors.is_empty(), "Resolution errors: {errors:?}");
     interpreter.interpret(&statements)
 }
 
@@ -445,6 +451,7 @@ fn if_executes_then_branch_when_condition_is_truthy() {
 
         then_branch: Box::new(crate::stmt::Stmt::Expression {
             expression: Expr::Assign {
+                id: 0,
                 name: token(TokenType::Identifier, "a"),
                 value: Box::new(Expr::Literal {
                     value: Literal::String("then".to_string()),
@@ -454,6 +461,7 @@ fn if_executes_then_branch_when_condition_is_truthy() {
 
         else_branch: Some(Box::new(crate::stmt::Stmt::Expression {
             expression: Expr::Assign {
+                id: 1,
                 name: token(TokenType::Identifier, "a"),
                 value: Box::new(Expr::Literal {
                     value: Literal::String("else".to_string()),
@@ -483,6 +491,7 @@ fn if_executes_then_branch_when_condition_is_truthy() {
 
     // Verify that the then branch executed.
     let result = interpreter.evaluate(&Expr::Variable {
+        id: 2,
         name: token(TokenType::Identifier, "a"),
     });
 
@@ -498,6 +507,7 @@ fn if_executes_else_branch_when_condition_is_falsey() {
 
         then_branch: Box::new(crate::stmt::Stmt::Expression {
             expression: Expr::Assign {
+                id: 0,
                 name: token(TokenType::Identifier, "a"),
                 value: Box::new(Expr::Literal {
                     value: Literal::String("then".to_string()),
@@ -507,6 +517,7 @@ fn if_executes_else_branch_when_condition_is_falsey() {
 
         else_branch: Some(Box::new(crate::stmt::Stmt::Expression {
             expression: Expr::Assign {
+                id: 1,
                 name: token(TokenType::Identifier, "a"),
                 value: Box::new(Expr::Literal {
                     value: Literal::String("else".to_string()),
@@ -533,6 +544,7 @@ fn if_executes_else_branch_when_condition_is_falsey() {
     ));
 
     let result = interpreter.evaluate(&Expr::Variable {
+        id: 2,
         name: token(TokenType::Identifier, "a"),
     });
 
@@ -548,6 +560,7 @@ fn if_without_else_does_nothing_when_false() {
 
         then_branch: Box::new(crate::stmt::Stmt::Expression {
             expression: Expr::Assign {
+                id: 0,
                 name: token(TokenType::Identifier, "a"),
                 value: Box::new(Expr::Literal {
                     value: Literal::String("changed".to_string()),
@@ -576,6 +589,7 @@ fn if_without_else_does_nothing_when_false() {
     ));
 
     let result = interpreter.evaluate(&Expr::Variable {
+        id: 1,
         name: token(TokenType::Identifier, "a"),
     });
 
@@ -662,6 +676,7 @@ fn logical_and_short_circuits() {
         }),
         operator: token(TokenType::And, "and"),
         right: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "undefined"),
         }),
     };
@@ -680,6 +695,7 @@ fn logical_or_short_circuits() {
         }),
         operator: token(TokenType::Or, "or"),
         right: Box::new(Expr::Variable {
+            id: 0,
             name: token(TokenType::Identifier, "undefined"),
         }),
     };

@@ -1,5 +1,6 @@
 mod environment;
 mod expr;
+mod expr_id;
 mod interpreter;
 mod lox;
 mod parser;

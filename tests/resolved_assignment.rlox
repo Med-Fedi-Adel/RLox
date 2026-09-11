@@ -1,0 +1,15 @@
+var global = "before global";
+
+{
+  var local = "before local";
+
+  fun update() {
+    local = "after local";
+    global = "after global";
+  }
+
+  update();
+  print local; // after local
+}
+
+print global; // after global

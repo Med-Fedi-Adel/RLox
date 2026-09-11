@@ -1,0 +1,7 @@
+{
+  var value = "first";
+  var value = "second";
+}
+
+// Expected resolution error:
+// Already a variable with this name in this scope.

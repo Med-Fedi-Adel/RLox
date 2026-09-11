@@ -1,0 +1,4 @@
+return "invalid";
+
+// Expected resolution error:
+// Can't return from top level code.

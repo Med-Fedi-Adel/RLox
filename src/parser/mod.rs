@@ -2,6 +2,7 @@ use std::{ptr::null, rc::Rc};
 
 use crate::{
     expr::Expr,
+    expr_id::{ExprId, ExprIdGenerator},
     lox::Lox,
     stmt::Stmt,
     token::{Literal, Token, TokenType},
@@ -337,8 +338,9 @@ impl<'a> Parser<'a> {
         if self.matches(&[TokenType::Equal]) {
             let equals = self.previous();
             let value = self.assignment()?;
-            if let Expr::Variable { name } = expr {
+            if let Expr::Variable { name, .. } = expr {
                 return Ok(Expr::Assign {
+                    id: self.lox.next_expr_id(),
                     name,
                     value: Box::new(value),
                 });
@@ -556,6 +558,7 @@ impl<'a> Parser<'a> {
 
         if self.matches(&[TokenType::Identifier]) {
             return Ok(Expr::Variable {
+                id: self.lox.next_expr_id(),
                 name: self.previous(),
             });
         }
@@ -640,6 +643,10 @@ impl<'a> Parser<'a> {
                 _ => self.advance(),
             };
         }
+    }
+
+    fn next_expr_id(&mut self) -> ExprId {
+        self.lox.next_expr_id()
     }
 }
 

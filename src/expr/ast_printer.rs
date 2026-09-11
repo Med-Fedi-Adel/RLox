@@ -25,13 +25,11 @@ impl AstPrinter {
                 self.parenthesize(&operator.lexeme, &[right.as_ref()])
             }
 
-            Expr::Variable { name } => name.lexeme.clone(),
+            Expr::Variable { name, .. } => name.lexeme.clone(),
 
-            Expr::Assign { name, value } => self.parenthesize(
-                "=",
-                &[&Expr::Variable { name: name.clone() }, value.as_ref()],
-            ),
-
+            Expr::Assign { name, value, .. } => {
+                format!("(= {} {})", name.lexeme, self.print(value))
+            }
             Expr::Logical {
                 left,
                 operator,

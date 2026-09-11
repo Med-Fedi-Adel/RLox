@@ -478,7 +478,7 @@ fn parses_variable_expression() {
 
     match &statements[0] {
         Stmt::Expression {
-            expression: Expr::Variable { name },
+            expression: Expr::Variable { name, .. },
         } => {
             assert_eq!(name.lexeme, "beverage");
         }
