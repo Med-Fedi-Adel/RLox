@@ -2,9 +2,9 @@ use std::rc::Rc;
 
 use crate::{
     environment::{self, Environment, EnvironmentRef},
-    interpreter::{ExecutionResult, LoxCallable, lox_instance::LoxInstanceRef},
+    interpreter::{ExecutionResult, LoxCallable, RuntimeError, lox_instance::LoxInstanceRef},
     stmt::Stmt,
-    token::{Literal, Token, Value},
+    token::{Literal, Token, TokenType, Value},
 };
 
 #[derive(Clone)]
@@ -13,6 +13,7 @@ pub struct LoxFunction {
     params: Rc<Vec<Token>>,
     body: Rc<Vec<Stmt>>,
     closure: EnvironmentRef,
+    is_initializer: bool,
 }
 
 impl LoxFunction {
@@ -21,12 +22,14 @@ impl LoxFunction {
         params: Rc<Vec<Token>>,
         body: Rc<Vec<Stmt>>,
         closure: EnvironmentRef,
+        is_initializer: bool,
     ) -> Self {
         Self {
             name,
             params,
             body,
             closure,
+            is_initializer,
         }
     }
 
@@ -42,7 +45,14 @@ impl LoxFunction {
             self.params.clone(),
             self.body.clone(),
             environment,
+            self.is_initializer,
         ))
+    }
+
+    fn get_bound_this(&self) -> Result<Value, RuntimeError> {
+        let this = Token::new(TokenType::This, "this".to_string(), None, 1);
+
+        Environment::get_at(self.closure.clone(), 0, 0, &this)
     }
 }
 
@@ -62,11 +72,17 @@ impl LoxCallable for LoxFunction {
             environment.borrow_mut().define_local(Some(argument));
         }
 
-        match interpreter.execute_block(&self.body, environment) {
+        let result = match interpreter.execute_block(&self.body, environment) {
             ExecutionResult::Success => Ok(Value::Literal(Literal::Nil)),
             ExecutionResult::RuntimeError(error) => Err(error),
             ExecutionResult::Break => Ok(Value::Literal(Literal::Nil)),
             ExecutionResult::Return(value) => Ok(value),
+        }?;
+
+        if self.is_initializer {
+            self.get_bound_this()
+        } else {
+            Ok(result)
         }
     }
 

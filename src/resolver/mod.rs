@@ -12,6 +12,8 @@ use crate::{
 enum FunctionType {
     None,
     Function,
+    Method,
+    Initializer,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -125,12 +127,18 @@ impl<'a> Resolver<'a> {
 
                 for method in methods {
                     if let Stmt::Function {
-                        name: _,
+                        name: method_name,
                         parameters,
                         body,
                     } = method
                     {
-                        self.resolve_function(parameters, body, FunctionType::Function);
+                        let function_type = if method_name.lexeme == "init" {
+                            FunctionType::Initializer
+                        } else {
+                            FunctionType::Method
+                        };
+
+                        self.resolve_function(parameters, body, function_type);
                     }
                 }
 
@@ -145,6 +153,10 @@ impl<'a> Resolver<'a> {
                 }
 
                 if let Some(value) = value {
+                    if self.current_function == FunctionType::Initializer {
+                        self.error(keyword, "Can't return a value from an initializer.");
+                    }
+
                     self.resolve_expr(value);
                 }
             }

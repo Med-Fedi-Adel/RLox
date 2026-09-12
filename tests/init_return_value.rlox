@@ -1,0 +1,8 @@
+class Foo {
+  init() {
+    return "something else";
+  }
+}
+
+// Expected resolution error:
+// Can't return a value from an initializer.

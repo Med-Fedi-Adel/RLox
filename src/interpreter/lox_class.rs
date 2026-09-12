@@ -1,8 +1,9 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    interpreter::lox_function::LoxFunction,
-    interpreter::lox_instance::LoxInstance,
+    interpreter::{
+        Interpreter, LoxCallable, RuntimeError, lox_function::LoxFunction, lox_instance::LoxInstance,
+    },
     token::Value,
 };
 
@@ -25,10 +26,25 @@ impl LoxClass {
     }
 
     pub fn arity(&self) -> usize {
-        0
+        match self.find_method("init") {
+            Some(initializer) => initializer.arity(),
+            None => 0,
+        }
     }
 
-    pub fn call(self: &Rc<Self>) -> Value {
-        Value::Instance(Rc::new(RefCell::new(LoxInstance::new(self.clone()))))
+    pub fn call(
+        self: &Rc<Self>,
+        interpreter: &mut Interpreter,
+        arguments: Vec<Value>,
+    ) -> Result<Value, RuntimeError> {
+        let instance = Rc::new(RefCell::new(LoxInstance::new(self.clone())));
+
+        if let Some(initializer) = self.find_method("init") {
+            initializer
+                .bind(instance.clone())
+                .call(interpreter, arguments)?;
+        }
+
+        Ok(Value::Instance(instance))
     }
 }

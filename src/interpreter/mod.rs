@@ -166,6 +166,7 @@ impl Interpreter {
                     parameters.clone(),
                     body.clone(),
                     self.environment.clone(),
+                    false,
                 );
 
                 self.define_variable(name, Some(Value::Callable(Rc::new(function))));
@@ -189,6 +190,7 @@ impl Interpreter {
                             parameters.clone(),
                             body.clone(),
                             self.environment.clone(),
+                            method_name.lexeme == "init",
                         );
 
                         class_methods.insert(method_name.lexeme.clone(), Rc::new(function));
@@ -362,7 +364,7 @@ impl Interpreter {
                             ));
                         }
 
-                        Ok(class.call())
+                        class.call(self, arguments_values)
                     }
 
                     _ => Err(RuntimeError::new(
@@ -409,8 +411,13 @@ impl Interpreter {
             }
 
             Expr::Function { params, body } => {
-                let function =
-                    LoxFunction::new(None, params.clone(), body.clone(), self.environment.clone());
+                let function = LoxFunction::new(
+                    None,
+                    params.clone(),
+                    body.clone(),
+                    self.environment.clone(),
+                    false,
+                );
 
                 Ok(Value::Callable(Rc::new(function)))
             }

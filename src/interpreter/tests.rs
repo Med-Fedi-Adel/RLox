@@ -754,6 +754,69 @@ fn native_clock_can_be_called() {
 }
 
 #[test]
+fn init_constructor_sets_instance_fields() {
+    let result = interpret(
+        r#"
+        class Coffee {
+          init(cream) {
+            this.cream = cream;
+          }
+        }
+
+        var cup = Coffee("yes, please");
+        print cup.cream;
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn init_called_directly_returns_this() {
+    let result = interpret(
+        r#"
+        class Foo {
+          init() {
+            print this;
+          }
+        }
+
+        var foo = Foo();
+        print foo.init();
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn returning_value_from_init_is_resolution_error() {
+    let mut lox = Lox::new();
+    let mut scanner = Scanner::new(
+        r#"
+        class Foo {
+          init() {
+            return "something else";
+          }
+        }
+        "#,
+    );
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens, &mut lox);
+    let statements = parser.parse();
+    let mut interpreter = Interpreter::new();
+
+    let errors = {
+        let mut resolver = Resolver::new(&mut interpreter);
+        resolver.resolve(&statements);
+        resolver.into_errors()
+    };
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message, "Can't return a value from an initializer.");
+}
+
+#[test]
 fn this_in_method_accesses_instance_fields() {
     let result = interpret(
         r#"

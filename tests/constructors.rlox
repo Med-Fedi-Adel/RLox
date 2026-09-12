@@ -1,0 +1,8 @@
+class Coffee {
+  init(cream) {
+    this.cream = cream;
+  }
+}
+
+var cup = Coffee("yes, please");
+print cup.cream;
