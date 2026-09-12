@@ -122,7 +122,7 @@ fn string_concatenation() {
 }
 
 #[test]
-fn string_plus_number_is_allowed() {
+fn string_plus_number_is_runtime_error() {
     let expression = Expr::Binary {
         left: Box::new(Expr::Literal {
             value: Literal::String("value: ".to_string()),
@@ -136,11 +136,14 @@ fn string_plus_number_is_allowed() {
     let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
-    assert_string(result, "value: 42");
+    assert_runtime_error(
+        result,
+        "Operands must be two numbers or two strings.",
+    );
 }
 
 #[test]
-fn number_plus_string_is_allowed() {
+fn number_plus_string_is_runtime_error() {
     let expression = Expr::Binary {
         left: Box::new(Expr::Literal {
             value: Literal::Number(42.0),
@@ -154,7 +157,10 @@ fn number_plus_string_is_allowed() {
     let mut interpreter = Interpreter::new();
     let result = interpreter.evaluate(&expression);
 
-    assert_string(result, "42 apples");
+    assert_runtime_error(
+        result,
+        "Operands must be two numbers or two strings.",
+    );
 }
 
 #[test]

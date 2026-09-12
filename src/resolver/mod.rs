@@ -192,7 +192,7 @@ impl<'a> Resolver<'a> {
 
             Stmt::Return { keyword, value } => {
                 if self.current_function == FunctionType::None {
-                    self.error(keyword, "Can't return from top level code.");
+                    self.error(keyword, "Can't return from top-level code.");
                 }
 
                 if let Some(value) = value {
@@ -440,18 +440,8 @@ impl<'a> Resolver<'a> {
     }
 
     fn end_scope(&mut self) {
-        let scope = self
-            .scopes
+        self.scopes
             .pop()
             .expect("Resolver must have an active scope");
-
-        for local in scope.into_values() {
-            if !local.used {
-                self.error(
-                    &local.token,
-                    format!("Local variable '{}' is never used.", local.token.lexeme),
-                );
-            }
-        }
     }
 }

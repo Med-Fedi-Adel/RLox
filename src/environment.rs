@@ -72,10 +72,7 @@ impl Environment {
         match self.values.get(&name.lexeme) {
             Some(Some(value)) => Ok(value.clone()),
 
-            Some(None) => Err(RuntimeError::new(
-                name.clone(),
-                format!("Uninitialized variable '{}'.", name.lexeme),
-            )),
+            Some(None) => Ok(Value::Literal(crate::token::Literal::Nil)),
 
             None => {
                 if let Some(enclosing) = &self.enclosing {
@@ -106,10 +103,7 @@ impl Environment {
 
         match value {
             Some(value) => Ok(value.clone()),
-            None => Err(RuntimeError::new(
-                name.clone(),
-                format!("Uninitialized variable '{}'.", name.lexeme),
-            )),
+            None => Ok(Value::Literal(crate::token::Literal::Nil)),
         }
     }
 

@@ -66,6 +66,10 @@ impl Lox {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan_tokens();
 
+        if scanner.had_error() {
+            self.had_error = true;
+        }
+
         let statements = {
             let mut parser = Parser::new(tokens, self);
             parser.parse()

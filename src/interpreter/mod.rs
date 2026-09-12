@@ -95,13 +95,13 @@ impl Interpreter {
             Stmt::Var { name, initializer } => {
                 let value = match initializer {
                     Some(expression) => match self.evaluate(expression) {
-                        Ok(value) => Some(value),
+                        Ok(value) => value,
                         Err(error) => return ExecutionResult::RuntimeError(error),
                     },
-                    None => None,
+                    None => Value::Literal(Literal::Nil),
                 };
 
-                self.define_variable(name, value);
+                self.define_variable(name, Some(value));
                 ExecutionResult::Success
             }
 
@@ -486,7 +486,7 @@ impl Interpreter {
 
                         None => Err(RuntimeError::new(
                             name.clone(),
-                            format!("Undefined property '{}'.", name.lexeme),
+                            "Only instances have properties.",
                         )),
                     },
 
@@ -660,29 +660,17 @@ impl Interpreter {
 
     fn add(&self, left: &Value, right: &Value, operator: &Token) -> Result<Value, RuntimeError> {
         match (left, right) {
-            // Number + Number
             (Value::Literal(Literal::Number(left)), Value::Literal(Literal::Number(right))) => {
                 Ok(Value::Literal(Literal::Number(left + right)))
             }
 
-            // String + String
             (Value::Literal(Literal::String(left)), Value::Literal(Literal::String(right))) => Ok(
                 Value::Literal(Literal::String(format!("{}{}", left, right))),
             ),
 
-            // String + anything
-            (Value::Literal(Literal::String(left)), right) => Ok(Value::Literal(Literal::String(
-                format!("{}{}", left, self.stringify(right)),
-            ))),
-
-            // Anything + String
-            (left, Value::Literal(Literal::String(right))) => Ok(Value::Literal(Literal::String(
-                format!("{}{}", self.stringify(left), right),
-            ))),
-
             _ => Err(RuntimeError::new(
                 operator.clone(),
-                "Operands must be two numbers or at least one string.",
+                "Operands must be two numbers or two strings.",
             )),
         }
     }
@@ -749,6 +737,12 @@ impl Interpreter {
 
             (Value::Literal(left), Value::Literal(right)) => left == right,
 
+            (Value::Callable(left), Value::Callable(right)) => Rc::ptr_eq(left, right),
+
+            (Value::Class(left), Value::Class(right)) => Rc::ptr_eq(left, right),
+
+            (Value::Instance(left), Value::Instance(right)) => Rc::ptr_eq(left, right),
+
             _ => false,
         }
     }
@@ -769,7 +763,13 @@ impl Interpreter {
 
             Value::Literal(Literal::Nil) => "nil".to_string(),
 
-            Value::Callable(callable) => format!("<fn {}>", callable.name()),
+            Value::Callable(callable) => {
+                if callable.is_native() {
+                    "<native fn>".to_string()
+                } else {
+                    format!("<fn {}>", callable.name())
+                }
+            }
 
             Value::Class(class) => class.name().to_string(),
 
@@ -812,11 +812,19 @@ pub trait LoxCallable {
     fn arity(&self) -> usize;
 
     fn name(&self) -> String;
+
+    fn is_native(&self) -> bool {
+        false
+    }
 }
 
 struct NativeClock;
 
 impl LoxCallable for NativeClock {
+    fn is_native(&self) -> bool {
+        true
+    }
+
     fn arity(&self) -> usize {
         0
     }

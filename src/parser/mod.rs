@@ -628,6 +628,11 @@ impl<'a> Parser<'a> {
 
         if !self.check(TokenType::RightParen) {
             loop {
+                if arguments.len() >= 255 {
+                    let token = self.peek().clone();
+                    self.error(&token, "Can't have more than 255 arguments.");
+                }
+
                 arguments.push(self.expression()?);
 
                 if !self.matches(&[TokenType::Comma]) {
@@ -649,6 +654,12 @@ impl<'a> Parser<'a> {
     // | "(" expression ")" ;
     fn primary(&mut self) -> Result<Expr, ParseError> {
         if self.matches(&[TokenType::Fun]) {
+            let keyword = self.previous();
+
+            if self.check(TokenType::Identifier) && self.check_next(TokenType::LeftParen) {
+                return Err(self.error(&keyword, "Expect expression."));
+            }
+
             return self.function_body("function");
         }
 
