@@ -238,4 +238,4 @@ When the bytecode VM lands, this README will be updated with clox architecture, 
 
 ## License
 
-This is full for learning purposes. The Lox language and test suite belong to the Crafting Interpreters project.
+This is for learning purposes. The Lox language and test suite belong to the Crafting Interpreters project.
