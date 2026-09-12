@@ -67,6 +67,64 @@ make test          # cargo test
 make test-official # official jlox conformance suite
 ```
 
+## Examples
+
+**Expressions**
+
+```lox
+print "Hello, " + "Lox!";
+print 1 + 2 * 3;
+```
+
+```
+Hello, Lox!
+7
+```
+
+**Closures**
+
+```lox
+fun makeCounter() {
+  var n = 0;
+  fun count() {
+    n = n + 1;
+    return n;
+  }
+  return count;
+}
+
+var counter = makeCounter();
+print counter();
+print counter();
+```
+
+```
+1
+2
+```
+
+**Classes and inheritance**
+
+```lox
+class Doughnut {
+  cook() { print "Fry."; }
+}
+
+class BostonCream < Doughnut {
+  cook() {
+    super.cook();
+    print "Fill and glaze.";
+  }
+}
+
+BostonCream().cook();
+```
+
+```
+Fry.
+Fill and glaze.
+```
+
 ## Makefile
 
 | Target | Description |
