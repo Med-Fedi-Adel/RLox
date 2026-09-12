@@ -9,6 +9,7 @@ use crate::{
 
 pub struct LoxClass {
     name: String,
+    superclass: Option<Rc<LoxClass>>,
     methods: HashMap<String, Rc<LoxFunction>>,
     getters: HashMap<String, Rc<LoxFunction>>,
 }
@@ -16,11 +17,13 @@ pub struct LoxClass {
 impl LoxClass {
     pub fn new(
         name: String,
+        superclass: Option<Rc<LoxClass>>,
         methods: HashMap<String, Rc<LoxFunction>>,
         getters: HashMap<String, Rc<LoxFunction>>,
     ) -> Self {
         Self {
             name,
+            superclass,
             methods,
             getters,
         }
@@ -31,17 +34,37 @@ impl LoxClass {
     }
 
     pub fn find_method(&self, name: &str) -> Option<Rc<LoxFunction>> {
-        self.methods.get(name).cloned()
+        if let Some(method) = self.methods.get(name) {
+            return Some(method.clone());
+        }
+
+        if let Some(superclass) = &self.superclass {
+            return superclass.find_method(name);
+        }
+
+        None
     }
 
     pub fn find_getter(&self, name: &str) -> Option<Rc<LoxFunction>> {
-        self.getters.get(name).cloned()
+        if let Some(getter) = self.getters.get(name) {
+            return Some(getter.clone());
+        }
+
+        if let Some(superclass) = &self.superclass {
+            return superclass.find_getter(name);
+        }
+
+        None
     }
 
     pub fn arity(&self) -> usize {
         match self.find_method("init") {
             Some(initializer) => initializer.arity(),
-            None => 0,
+            None => self
+                .superclass
+                .as_ref()
+                .map(|superclass| superclass.arity())
+                .unwrap_or(0),
         }
     }
 
@@ -56,10 +79,27 @@ impl LoxClass {
             initializer
                 .bind(instance.clone())
                 .call(interpreter, arguments)?;
+        } else if let Some(superclass) = &self.superclass {
+            initializer_chain(superclass, interpreter, instance.clone(), arguments)?;
         }
 
         Ok(Value::Instance(instance))
     }
+}
+
+fn initializer_chain(
+    superclass: &Rc<LoxClass>,
+    interpreter: &mut Interpreter,
+    instance: Rc<RefCell<LoxInstance>>,
+    arguments: Vec<Value>,
+) -> Result<(), RuntimeError> {
+    if let Some(initializer) = superclass.find_method("init") {
+        initializer.bind(instance).call(interpreter, arguments)?;
+    } else if let Some(enclosing) = &superclass.superclass {
+        initializer_chain(enclosing, interpreter, instance, arguments)?;
+    }
+
+    Ok(())
 }
 
 pub struct ClassObject {
@@ -77,6 +117,10 @@ impl ClassObject {
 
     pub fn name(&self) -> &str {
         self.instance_class.name()
+    }
+
+    pub fn instance_class(&self) -> &Rc<LoxClass> {
+        &self.instance_class
     }
 
     pub fn find_static(&self, name: &str) -> Option<Rc<LoxFunction>> {

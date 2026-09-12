@@ -62,6 +62,7 @@ pub enum Stmt {
 
     Class {
         name: Token,
+        superclass: Option<Expr>,
         members: Vec<ClassMember>,
     },
 

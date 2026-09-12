@@ -31,6 +31,10 @@ impl Environment {
         }))
     }
 
+    pub fn enclosing(&self) -> Option<EnvironmentRef> {
+        self.enclosing.clone()
+    }
+
     pub fn ancestor(environment: EnvironmentRef, distance: usize) -> EnvironmentRef {
         let mut current = environment;
 

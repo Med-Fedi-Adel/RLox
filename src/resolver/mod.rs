@@ -20,6 +20,7 @@ enum FunctionType {
 enum ClassType {
     None,
     Class,
+    Subclass,
 }
 
 #[derive(Debug)]
@@ -116,12 +117,32 @@ impl<'a> Resolver<'a> {
                 self.resolve_function(parameters, body, FunctionType::Function);
             }
 
-            Stmt::Class { name, members } => {
+            Stmt::Class {
+                name,
+                superclass,
+                members,
+            } => {
                 let enclosing_class = self.current_class;
-                self.current_class = ClassType::Class;
 
                 self.declare(name);
                 self.define(name);
+
+                if let Some(super_expr) = superclass {
+                    if let Expr::Variable {
+                        name: super_name, ..
+                    } = super_expr
+                    {
+                        if name.lexeme == super_name.lexeme {
+                            self.error(super_name, "A class can't inherit from itself.");
+                        }
+                    }
+
+                    self.current_class = ClassType::Subclass;
+                    self.resolve_expr(super_expr);
+                    self.begin_super_scope();
+                } else {
+                    self.current_class = ClassType::Class;
+                }
 
                 self.begin_class_scope();
 
@@ -150,6 +171,10 @@ impl<'a> Resolver<'a> {
                 }
 
                 self.end_scope();
+
+                if superclass.is_some() {
+                    self.end_scope();
+                }
 
                 for member in members {
                     if let ClassMember::StaticMethod {
@@ -261,6 +286,16 @@ impl<'a> Resolver<'a> {
                 }
             }
 
+            Expr::Super { id, keyword, method: _ } => {
+                if self.current_class == ClassType::None {
+                    self.error(keyword, "Can't use 'super' outside of a class.");
+                } else if self.current_class != ClassType::Subclass {
+                    self.error(keyword, "Can't use 'super' in a class with no superclass.");
+                } else {
+                    self.resolve_local(*id, keyword, true);
+                }
+            }
+
             Expr::Function { params, body } => {
                 self.resolve_function(params, body, FunctionType::Function);
             }
@@ -364,6 +399,25 @@ impl<'a> Resolver<'a> {
 
     fn begin_scope(&mut self) {
         self.scopes.push(HashMap::new());
+    }
+
+    fn begin_super_scope(&mut self) {
+        self.begin_scope();
+
+        let super_token = Token::new(TokenType::Super, "super".to_string(), None, 1);
+
+        self.scopes
+            .last_mut()
+            .expect("Resolver must have an active scope")
+            .insert(
+                "super".to_string(),
+                Local {
+                    token: super_token,
+                    defined: true,
+                    used: true,
+                    slot: 0,
+                },
+            );
     }
 
     fn begin_class_scope(&mut self) {

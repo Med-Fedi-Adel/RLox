@@ -173,8 +173,47 @@ impl Interpreter {
                 ExecutionResult::Success
             }
 
-            Stmt::Class { name, members } => {
+            Stmt::Class {
+                name,
+                superclass,
+                members,
+            } => {
                 self.define_variable(name, None);
+
+                let mut superclass_object = None;
+
+                if let Some(super_expr) = superclass {
+                    let super_value = match self.evaluate(super_expr) {
+                        Ok(value) => value,
+                        Err(error) => return ExecutionResult::RuntimeError(error),
+                    };
+
+                    match super_value {
+                        Value::Class(class) => superclass_object = Some(class),
+
+                        _ => {
+                            let error_token = match super_expr {
+                                Expr::Variable { name: super_name, .. } => super_name.clone(),
+                                _ => name.clone(),
+                            };
+
+                            return ExecutionResult::RuntimeError(RuntimeError::new(
+                                error_token,
+                                "Superclass must be a class.",
+                            ));
+                        }
+                    }
+                }
+
+                if let Some(ref super_class) = superclass_object {
+                    let super_environment = Environment::from(self.environment.clone());
+
+                    super_environment
+                        .borrow_mut()
+                        .define_local(Some(Value::Class(super_class.clone())));
+
+                    self.environment = super_environment;
+                }
 
                 let mut instance_methods = HashMap::new();
                 let mut getters = HashMap::new();
@@ -232,20 +271,36 @@ impl Interpreter {
                     }
                 }
 
+                let superclass = superclass_object
+                    .as_ref()
+                    .map(|class| class.instance_class().clone());
+
                 let instance_class = Rc::new(lox_class::LoxClass::new(
                     name.lexeme.clone(),
+                    superclass,
                     instance_methods,
                     getters,
                 ));
 
                 let metaclass = Rc::new(lox_class::LoxClass::new(
                     format!("{} metaclass", name.lexeme),
+                    None,
                     static_methods,
                     HashMap::new(),
                 ));
 
                 let class_object =
                     Rc::new(lox_class::ClassObject::new(instance_class, metaclass));
+
+                if superclass_object.is_some() {
+                    let enclosing = self
+                        .environment
+                        .borrow()
+                        .enclosing()
+                        .expect("Superclass environment must have an enclosing scope");
+
+                    self.environment = enclosing;
+                }
 
                 match self.assign_variable(name, Value::Class(class_object)) {
                     Ok(()) => ExecutionResult::Success,
@@ -445,6 +500,64 @@ impl Interpreter {
             }
 
             Expr::This { id, keyword } => self.look_up_variable(*id, keyword),
+
+            Expr::Super {
+                id,
+                keyword,
+                method,
+            } => {
+                let resolution = self
+                    .locals
+                    .get(id)
+                    .expect("Super expression must be resolved");
+
+                let super_value = Environment::get_at(
+                    self.environment.clone(),
+                    resolution.distance,
+                    resolution.slot,
+                    keyword,
+                )?;
+
+                let superclass = match super_value {
+                    Value::Class(class) => class,
+
+                    _ => {
+                        return Err(RuntimeError::new(
+                            keyword.clone(),
+                            "Superclass must be a class.",
+                        ));
+                    }
+                };
+
+                let this = Token::new(TokenType::This, "this".to_string(), None, 1);
+
+                let this_value = Environment::get_at(
+                    self.environment.clone(),
+                    resolution.distance - 1,
+                    0,
+                    &this,
+                )?;
+
+                let instance = match this_value {
+                    Value::Instance(instance) => instance,
+
+                    _ => {
+                        return Err(RuntimeError::new(
+                            keyword.clone(),
+                            "Super expression requires a bound instance.",
+                        ));
+                    }
+                };
+
+                match superclass.instance_class().find_method(&method.lexeme) {
+                    Some(method_fn) => Ok(Value::Callable(method_fn.bind(instance))),
+
+                    None => Err(RuntimeError::new(
+                        method.clone(),
+                        format!("Undefined property '{}'.", method.lexeme),
+                    )),
+                }
+            }
 
             Expr::Set { object, name, value } => {
                 let object = self.evaluate(object)?;

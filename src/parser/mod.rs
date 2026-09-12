@@ -63,6 +63,17 @@ impl<'a> Parser<'a> {
     fn class_decl(&mut self) -> Result<Stmt, ParseError> {
         let name = self.consume(TokenType::Identifier, "Expect class name.")?;
 
+        let superclass = if self.matches(&[TokenType::Less]) {
+            let super_name = self.consume(TokenType::Identifier, "Expect superclass name.")?;
+
+            Some(Expr::Variable {
+                id: self.lox.next_expr_id(),
+                name: super_name,
+            })
+        } else {
+            None
+        };
+
         self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
 
         let mut members = Vec::new();
@@ -73,7 +84,11 @@ impl<'a> Parser<'a> {
 
         self.consume(TokenType::RightBrace, "Expect '}' after class body.")?;
 
-        Ok(Stmt::Class { name, members })
+        Ok(Stmt::Class {
+            name,
+            superclass,
+            members,
+        })
     }
 
     fn class_member(&mut self) -> Result<ClassMember, ParseError> {
@@ -670,6 +685,20 @@ impl<'a> Parser<'a> {
 
             return Ok(Expr::Grouping {
                 expression: Box::new(expr),
+            });
+        }
+
+        if self.matches(&[TokenType::Super]) {
+            let keyword = self.previous();
+
+            self.consume(TokenType::Dot, "Expect '.' after 'super'.")?;
+
+            let method = self.consume(TokenType::Identifier, "Expect superclass method name.")?;
+
+            return Ok(Expr::Super {
+                id: self.lox.next_expr_id(),
+                keyword,
+                method,
             });
         }
 

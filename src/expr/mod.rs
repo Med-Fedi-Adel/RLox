@@ -70,6 +70,12 @@ pub enum Expr {
         keyword: Token,
     },
 
+    Super {
+        id: ExprId,
+        keyword: Token,
+        method: Token,
+    },
+
     Function {
         params: Rc<Vec<Token>>,
         body: Rc<Vec<Stmt>>,

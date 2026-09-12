@@ -994,6 +994,158 @@ fn class_declaration_executes_successfully() {
 }
 
 #[test]
+fn subclass_inherits_superclass_methods() {
+    let result = interpret(
+        r#"
+        class Doughnut {
+          cook() {
+            print "Fry until golden brown.";
+          }
+        }
+
+        class BostonCream < Doughnut {}
+
+        BostonCream().cook();
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn super_calls_superclass_method() {
+    let result = interpret(
+        r#"
+        class Doughnut {
+          cook() {
+            print "Fry until golden brown.";
+          }
+        }
+
+        class BostonCream < Doughnut {
+          cook() {
+            super.cook();
+            print "Pipe full of custard and coat with chocolate.";
+          }
+        }
+
+        BostonCream().cook();
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn super_starts_lookup_on_enclosing_class_superclass() {
+    let result = interpret(
+        r#"
+        class A {
+          method() {
+            print "A method";
+          }
+        }
+
+        class B < A {
+          method() {
+            print "B method";
+          }
+
+          test() {
+            super.method();
+          }
+        }
+
+        class C < B {}
+
+        C().test();
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn self_inheritance_is_resolution_error() {
+    let mut lox = Lox::new();
+    let mut scanner = Scanner::new("class Oops < Oops {}");
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens, &mut lox);
+    let statements = parser.parse();
+    let mut interpreter = Interpreter::new();
+
+    let errors = {
+        let mut resolver = Resolver::new(&mut interpreter);
+        resolver.resolve(&statements);
+        resolver.into_errors()
+    };
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message, "A class can't inherit from itself.");
+}
+
+#[test]
+fn super_without_superclass_is_resolution_error() {
+    let mut lox = Lox::new();
+    let mut scanner = Scanner::new(
+        r#"
+        class Eclair {
+          cook() {
+            super.cook();
+          }
+        }
+        "#,
+    );
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens, &mut lox);
+    let statements = parser.parse();
+    let mut interpreter = Interpreter::new();
+
+    let errors = {
+        let mut resolver = Resolver::new(&mut interpreter);
+        resolver.resolve(&statements);
+        resolver.into_errors()
+    };
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0].message,
+        "Can't use 'super' in a class with no superclass."
+    );
+}
+
+#[test]
+fn super_outside_class_is_resolution_error() {
+    let mut lox = Lox::new();
+    let mut scanner = Scanner::new("super.notEvenInAClass();");
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens, &mut lox);
+    let statements = parser.parse();
+    let mut interpreter = Interpreter::new();
+
+    let errors = {
+        let mut resolver = Resolver::new(&mut interpreter);
+        resolver.resolve(&statements);
+        resolver.into_errors()
+    };
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message, "Can't use 'super' outside of a class.");
+}
+
+#[test]
+fn non_class_superclass_is_runtime_error() {
+    let result = interpret(
+        r#"
+        var NotAClass = "I am totally not a class";
+        class Subclass < NotAClass {}
+        "#,
+    );
+
+    assert_interpret_runtime_error(result, "Superclass must be a class.");
+}
+
+#[test]
 fn native_clock_returns_number() {
     let result = interpret("print clock();");
 

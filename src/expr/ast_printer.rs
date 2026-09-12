@@ -59,6 +59,8 @@ impl AstPrinter {
 
             Expr::This { .. } => "this".to_string(),
 
+            Expr::Super { method, .. } => format!("(super {})", method.lexeme),
+
             Expr::Function { params, .. } => {
                 let param_names: Vec<&str> =
                     params.iter().map(|token| token.lexeme.as_str()).collect();

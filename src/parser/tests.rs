@@ -506,8 +506,13 @@ fn parses_class_declaration() {
     assert_eq!(statements.len(), 1);
 
     match &statements[0] {
-        Stmt::Class { name, members } => {
+        Stmt::Class {
+            name,
+            superclass,
+            members,
+        } => {
             assert_eq!(name.lexeme, "Breakfast");
+            assert!(superclass.is_none());
             assert_eq!(members.len(), 2);
 
             for member in members {
