@@ -106,6 +106,11 @@ impl<'a> Resolver<'a> {
                 self.resolve_function(parameters, body, FunctionType::Function);
             }
 
+            Stmt::Class { name, methods: _ } => {
+                self.declare(name);
+                self.define(name);
+            }
+
             Stmt::Return { keyword, value } => {
                 if self.current_function == FunctionType::None {
                     self.error(keyword, "Can't return from top level code.");

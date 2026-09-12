@@ -754,6 +754,23 @@ fn native_clock_can_be_called() {
 }
 
 #[test]
+fn class_declaration_executes_successfully() {
+    let result = interpret(
+        r#"
+        class DevonshireCream {
+          serveOn() {
+            return "Scones";
+          }
+        }
+
+        print DevonshireCream;
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
 fn native_clock_returns_number() {
     let result = interpret("print clock();");
 

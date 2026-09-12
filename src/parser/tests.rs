@@ -486,3 +486,35 @@ fn parses_variable_expression() {
         _ => panic!("Expected variable expression"),
     }
 }
+
+#[test]
+fn parses_class_declaration() {
+    let statements = parse(
+        r#"
+        class Breakfast {
+            cook() {
+                print "Eggs a-fryin'!";
+            }
+
+            serve(who) {
+                print who;
+            }
+        }
+        "#,
+    );
+
+    assert_eq!(statements.len(), 1);
+
+    match &statements[0] {
+        Stmt::Class { name, methods } => {
+            assert_eq!(name.lexeme, "Breakfast");
+            assert_eq!(methods.len(), 2);
+
+            for method in methods {
+                assert!(matches!(method, Stmt::Function { .. }));
+            }
+        }
+
+        _ => panic!("Expected class declaration"),
+    }
+}

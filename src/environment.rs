@@ -55,6 +55,15 @@ impl Environment {
         self.local_values.push(value);
     }
 
+    pub fn assign_last_local(&mut self, value: Option<Value>) {
+        let slot = self
+            .local_values
+            .last_mut()
+            .expect("No local slot to assign");
+
+        *slot = value;
+    }
+
     pub fn get(&self, name: &Token) -> Result<Value, RuntimeError> {
         match self.values.get(&name.lexeme) {
             Some(Some(value)) => Ok(value.clone()),

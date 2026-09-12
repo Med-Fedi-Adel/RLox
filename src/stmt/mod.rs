@@ -40,6 +40,11 @@ pub enum Stmt {
         body: Rc<Vec<Stmt>>,
     },
 
+    Class {
+        name: Token,
+        methods: Vec<Stmt>,
+    },
+
     Return {
         keyword: Token,
         value: Option<Expr>,

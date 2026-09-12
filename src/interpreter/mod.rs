@@ -64,6 +64,18 @@ impl Interpreter {
         }
     }
 
+    fn assign_variable(&mut self, name: &Token, value: Value) -> Result<(), RuntimeError> {
+        if Rc::ptr_eq(&self.environment, &self.globals) {
+            self.globals.borrow_mut().assign(name, value)
+        } else {
+            self.environment
+                .borrow_mut()
+                .assign_last_local(Some(value));
+
+            Ok(())
+        }
+    }
+
     fn execute(&mut self, statement: &Stmt) -> ExecutionResult {
         match statement {
             Stmt::Expression { expression } => match self.evaluate(expression) {
@@ -156,6 +168,17 @@ impl Interpreter {
 
                 self.define_variable(name, Some(Value::Callable(Rc::new(function))));
                 ExecutionResult::Success
+            }
+
+            Stmt::Class { name, methods: _ } => {
+                self.define_variable(name, None);
+
+                let klass = lox_class::LoxClass::new(name.lexeme.clone());
+
+                match self.assign_variable(name, Value::Class(Rc::new(klass))) {
+                    Ok(()) => ExecutionResult::Success,
+                    Err(error) => ExecutionResult::RuntimeError(error),
+                }
             }
 
             Stmt::Return { keyword, value } => {
@@ -497,6 +520,8 @@ impl Interpreter {
             Value::Literal(Literal::Nil) => "nil".to_string(),
 
             Value::Callable(callable) => format!("<fn {}>", callable.name()),
+
+            Value::Class(class) => class.name().to_string(),
         }
     }
 }
@@ -563,4 +588,5 @@ impl LoxCallable for NativeClock {
 #[cfg(test)]
 mod tests;
 
+pub mod lox_class;
 mod lox_function;

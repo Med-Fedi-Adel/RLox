@@ -44,6 +44,10 @@ impl<'a> Parser<'a> {
     }
 
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.matches(&[TokenType::Class]) {
+            return self.class_decl();
+        }
+
         if self.check(TokenType::Fun) && self.check_next(TokenType::Identifier) {
             self.advance();
             return self.function_decl("function");
@@ -54,6 +58,22 @@ impl<'a> Parser<'a> {
         }
 
         self.statement()
+    }
+
+    fn class_decl(&mut self) -> Result<Stmt, ParseError> {
+        let name = self.consume(TokenType::Identifier, "Expect class name.")?;
+
+        self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
+
+        let mut methods = Vec::new();
+
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            methods.push(self.function_decl("method")?);
+        }
+
+        self.consume(TokenType::RightBrace, "Expect '}' after class body.")?;
+
+        Ok(Stmt::Class { name, methods })
     }
 
     fn check_next(&self, token_type: TokenType) -> bool {
