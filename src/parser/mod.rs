@@ -365,6 +365,15 @@ impl<'a> Parser<'a> {
                     value: Box::new(value),
                 });
             }
+
+            if let Expr::Get { object, name } = expr {
+                return Ok(Expr::Set {
+                    object,
+                    name,
+                    value: Box::new(value),
+                });
+            }
+
             self.error(&equals, "Invalid assignment target.");
         }
 
@@ -503,6 +512,16 @@ impl<'a> Parser<'a> {
         loop {
             if self.matches(&[TokenType::LeftParen]) {
                 expr = self.finish_call(expr)?;
+            } else if self.matches(&[TokenType::Dot]) {
+                let name = self.consume(
+                    TokenType::Identifier,
+                    "Expect property name after '.'.",
+                )?;
+
+                expr = Expr::Get {
+                    object: Box::new(expr),
+                    name,
+                };
             } else {
                 break;
             }

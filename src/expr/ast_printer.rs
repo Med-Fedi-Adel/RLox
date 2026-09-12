@@ -49,6 +49,14 @@ impl AstPrinter {
                 self.parenthesize("call", &expressions)
             }
 
+            Expr::Get { object, name } => {
+                format!("(. {} {})", self.print(object), name.lexeme)
+            }
+
+            Expr::Set { object, name, value } => {
+                format!("(= (. {} {}) {})", self.print(object), name.lexeme, self.print(value))
+            }
+
             Expr::Function { params, .. } => {
                 let param_names: Vec<&str> =
                     params.iter().map(|token| token.lexeme.as_str()).collect();

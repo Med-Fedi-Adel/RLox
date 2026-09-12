@@ -54,6 +54,17 @@ pub enum Expr {
         arguments: Vec<Expr>,
     },
 
+    Get {
+        object: Box<Expr>,
+        name: Token,
+    },
+
+    Set {
+        object: Box<Expr>,
+        name: Token,
+        value: Box<Expr>,
+    },
+
     Function {
         params: Rc<Vec<Token>>,
         body: Rc<Vec<Stmt>>,

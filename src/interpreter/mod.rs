@@ -328,11 +328,60 @@ impl Interpreter {
                         function.call(self, arguments_values)
                     }
 
+                    Value::Class(class) => {
+                        if arguments_values.len() != class.arity() {
+                            return Err(RuntimeError::new(
+                                paren.clone(),
+                                format!(
+                                    "Expected {} arguments but got {}.",
+                                    class.arity(),
+                                    arguments_values.len()
+                                ),
+                            ));
+                        }
+
+                        Ok(class.call())
+                    }
+
                     _ => Err(RuntimeError::new(
                         paren.clone(),
                         "Can only call functions and classes.",
                     )),
                 }
+            }
+
+            Expr::Get { object, name } => {
+                let object = self.evaluate(object)?;
+
+                match object {
+                    Value::Instance(instance) => instance.borrow().get(name),
+
+                    _ => Err(RuntimeError::new(
+                        name.clone(),
+                        "Only instances have properties.",
+                    )),
+                }
+            }
+
+            Expr::Set { object, name, value } => {
+                let object = self.evaluate(object)?;
+
+                let instance = match object {
+                    Value::Instance(instance) => instance,
+
+                    _ => {
+                        return Err(RuntimeError::new(
+                            name.clone(),
+                            "Only instances have fields.",
+                        ));
+                    }
+                };
+
+                let value = self.evaluate(value)?;
+
+                instance.borrow_mut().set(name, value.clone());
+
+                Ok(value)
             }
 
             Expr::Function { params, body } => {
@@ -522,6 +571,10 @@ impl Interpreter {
             Value::Callable(callable) => format!("<fn {}>", callable.name()),
 
             Value::Class(class) => class.name().to_string(),
+
+            Value::Instance(instance) => {
+                format!("{} instance", instance.borrow().klass_name())
+            }
         }
     }
 }
@@ -589,4 +642,5 @@ impl LoxCallable for NativeClock {
 mod tests;
 
 pub mod lox_class;
+pub mod lox_instance;
 mod lox_function;

@@ -754,6 +754,70 @@ fn native_clock_can_be_called() {
 }
 
 #[test]
+fn class_call_creates_instance() {
+    let result = interpret(
+        r#"
+        class Bagel {}
+        var bagel = Bagel();
+        print bagel;
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn instance_properties_can_be_read_and_written() {
+    let result = interpret(
+        r#"
+        class Breakfast {}
+        var breakfast = Breakfast();
+        breakfast.food = "eggs";
+        print breakfast.food;
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn get_on_non_instance_is_runtime_error() {
+    let result = interpret(
+        r#"
+        var value = 123;
+        print value.bad;
+        "#,
+    );
+
+    assert_interpret_runtime_error(result, "Only instances have properties.");
+}
+
+#[test]
+fn set_on_non_instance_is_runtime_error() {
+    let result = interpret(
+        r#"
+        var value = 123;
+        value.bad = "nope";
+        "#,
+    );
+
+    assert_interpret_runtime_error(result, "Only instances have fields.");
+}
+
+#[test]
+fn undefined_property_is_runtime_error() {
+    let result = interpret(
+        r#"
+        class Thing {}
+        var thing = Thing();
+        print thing.missing;
+        "#,
+    );
+
+    assert_interpret_runtime_error(result, "Undefined property 'missing'.");
+}
+
+#[test]
 fn class_declaration_executes_successfully() {
     let result = interpret(
         r#"

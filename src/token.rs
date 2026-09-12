@@ -1,6 +1,10 @@
 use std::{fmt, rc::Rc};
 
-use crate::interpreter::{LoxCallable, lox_class::LoxClass};
+use crate::interpreter::{
+    LoxCallable,
+    lox_class::LoxClass,
+    lox_instance::LoxInstanceRef,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
@@ -67,6 +71,7 @@ pub enum Value {
     Literal(Literal),
     Callable(Rc<dyn LoxCallable>),
     Class(Rc<LoxClass>),
+    Instance(LoxInstanceRef),
 }
 
 impl fmt::Debug for Value {
@@ -75,6 +80,10 @@ impl fmt::Debug for Value {
             Value::Literal(value) => f.debug_tuple("Literal").field(value).finish(),
             Value::Callable(_) => write!(f, "Callable"),
             Value::Class(class) => f.debug_tuple("Class").field(&class.name()).finish(),
+            Value::Instance(instance) => f
+                .debug_tuple("Instance")
+                .field(&instance.borrow().klass_name())
+                .finish(),
         }
     }
 }
