@@ -30,17 +30,17 @@ Everything from Part II of the book is implemented:
 
 These are extra features rlox supports on top of standard Lox. They do not affect compatibility with the official jlox tests.
 
-- `break` — exit the innermost loop early
-- Anonymous functions — `fun (a, b) { ... }` as expressions
-- Static methods — `class Math { class square(n) { ... } }`
-- Getters — `area { return ... }` on instances
+- `break` ; exit the innermost loop early
+- Anonymous functions ; `fun (a, b) { ... }` as expressions
+- Static methods ; `class Math { class square(n) { ... } }`
+- Getters ; `area { return ... }` on instances
 
 See `tests/tree_walk_interpreter.rlox` for a guided tour of the language.
 
 ## Requirements
 
 - [Rust](https://www.rust-lang.org/) (2024 edition)
-- [Dart](https://dart.dev/get-dart) — only needed to run the official Crafting Interpreters test suite
+- [Dart](https://dart.dev/get-dart), only needed to run the official Crafting Interpreters test suite
 
 ## Quick start
 
@@ -86,8 +86,8 @@ make test-official # official jlox conformance suite
 
 Variables:
 
-- `CRAFTING` — path to a clone of [craftinginterpreters](https://github.com/munificent/craftinginterpreters) (default: `~/Projects/craftinginterpreters`)
-- `FILTER` — limit official tests to a path prefix, e.g. `FILTER=inheritance`
+- `CRAFTING`: path to a clone of [craftinginterpreters](https://github.com/munificent/craftinginterpreters) (default: `~/Projects/craftinginterpreters`)
+- `FILTER`: limit official tests to a path prefix, e.g. `FILTER=inheritance`
 
 ```bash
 make test-official FILTER=super
@@ -124,7 +124,7 @@ The Dart test runner expects a jlox-compatible interpreter. rlox uses the same e
 
 ### Local `.rlox` fixtures
 
-The `tests/` directory contains hand-written programs used during development. They are not run automatically — use `make run-file FILE=tests/foo.rlox`.
+The `tests/` directory contains hand-written programs used during development. They are not run automatically. Use `make run-file FILE=tests/foo.rlox`.
 
 ## Architecture
 
