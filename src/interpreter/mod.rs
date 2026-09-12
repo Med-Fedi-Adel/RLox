@@ -12,7 +12,13 @@ use crate::{
 pub struct Interpreter {
     globals: EnvironmentRef,
     environment: EnvironmentRef,
-    locals: HashMap<ExprId, usize>,
+    locals: HashMap<ExprId, LocalResolution>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LocalResolution {
+    distance: usize,
+    slot: usize,
 }
 
 impl Interpreter {
@@ -46,8 +52,16 @@ impl Interpreter {
         self.evaluate(expression)
     }
 
-    pub fn resolve(&mut self, id: ExprId, depth: usize) {
-        self.locals.insert(id, depth);
+    pub fn resolve(&mut self, id: ExprId, distance: usize, slot: usize) {
+        self.locals.insert(id, LocalResolution { distance, slot });
+    }
+
+    fn define_variable(&mut self, name: &Token, value: Option<Value>) {
+        if Rc::ptr_eq(&self.environment, &self.globals) {
+            self.globals.borrow_mut().define(name.lexeme.clone(), value);
+        } else {
+            self.environment.borrow_mut().define_local(value);
+        }
     }
 
     fn execute(&mut self, statement: &Stmt) -> ExecutionResult {
@@ -73,10 +87,7 @@ impl Interpreter {
                     None => None,
                 };
 
-                self.environment
-                    .borrow_mut()
-                    .define(name.lexeme.clone(), value);
-
+                self.define_variable(name, value);
                 ExecutionResult::Success
             }
 
@@ -143,11 +154,7 @@ impl Interpreter {
                     self.environment.clone(),
                 );
 
-                self.environment.borrow_mut().define(
-                    name.lexeme.clone(),
-                    Some(Value::Callable(Rc::new(function))),
-                );
-
+                self.define_variable(name, Some(Value::Callable(Rc::new(function))));
                 ExecutionResult::Success
             }
 
@@ -201,13 +208,13 @@ impl Interpreter {
             Expr::Assign { id, name, value } => {
                 let value = self.evaluate(value)?;
 
-                if let Some(distance) = self.locals.get(id) {
+                if let Some(resolution) = self.locals.get(id) {
                     Environment::assign_at(
                         self.environment.clone(),
-                        *distance,
-                        name,
+                        resolution.distance,
+                        resolution.slot,
                         value.clone(),
-                    )?;
+                    );
                 } else {
                     self.globals.borrow_mut().assign(name, value.clone())?;
                 }
@@ -315,8 +322,13 @@ impl Interpreter {
     }
 
     fn look_up_variable(&self, id: ExprId, name: &Token) -> Result<Value, RuntimeError> {
-        if let Some(distance) = self.locals.get(&id) {
-            Environment::get_at(self.environment.clone(), *distance, name)
+        if let Some(resolution) = self.locals.get(&id) {
+            Environment::get_at(
+                self.environment.clone(),
+                resolution.distance,
+                resolution.slot,
+                name,
+            )
         } else {
             self.globals.borrow().get(name)
         }

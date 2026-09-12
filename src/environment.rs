@@ -10,6 +10,7 @@ pub type EnvironmentRef = Rc<RefCell<Environment>>;
 
 pub struct Environment {
     values: HashMap<String, Option<Value>>,
+    local_values: Vec<Option<Value>>,
     enclosing: Option<EnvironmentRef>,
 }
 
@@ -17,6 +18,7 @@ impl Environment {
     pub fn new() -> EnvironmentRef {
         Rc::new(RefCell::new(Self {
             values: HashMap::new(),
+            local_values: Vec::new(),
             enclosing: None,
         }))
     }
@@ -24,6 +26,7 @@ impl Environment {
     pub fn from(enclosing: EnvironmentRef) -> EnvironmentRef {
         Rc::new(RefCell::new(Self {
             values: HashMap::new(),
+            local_values: Vec::new(),
             enclosing: Some(enclosing),
         }))
     }
@@ -46,6 +49,10 @@ impl Environment {
 
     pub fn define(&mut self, name: String, value: Option<Value>) {
         self.values.insert(name, value);
+    }
+
+    pub fn define_local(&mut self, value: Option<Value>) {
+        self.local_values.push(value);
     }
 
     pub fn get(&self, name: &Token) -> Result<Value, RuntimeError> {
@@ -73,22 +80,22 @@ impl Environment {
     pub fn get_at(
         environment: EnvironmentRef,
         distance: usize,
+        slot: usize,
         name: &Token,
     ) -> Result<Value, RuntimeError> {
         let ancestor = Self::ancestor(environment, distance);
+        let environment = ancestor.borrow();
 
-        let env = ancestor.borrow();
+        let value = environment
+            .local_values
+            .get(slot)
+            .expect("Resolver produced an invalid local slot");
 
-        match env.values.get(&name.lexeme) {
-            Some(Some(value)) => Ok(value.clone()),
-            Some(None) => Err(RuntimeError::new(
-                name.clone(),
-                format!("Uninitialized variable '{}'.", name.lexeme),
-            )),
-
+        match value {
+            Some(value) => Ok(value.clone()),
             None => Err(RuntimeError::new(
                 name.clone(),
-                format!("Undefined variable '{}'.", name.lexeme),
+                format!("Uninitialized variable '{}'.", name.lexeme),
             )),
         }
     }
@@ -109,24 +116,15 @@ impl Environment {
         ))
     }
 
-    pub fn assign_at(
-        environment: EnvironmentRef,
-        distance: usize,
-        name: &Token,
-        value: Value,
-    ) -> Result<(), RuntimeError> {
+    pub fn assign_at(environment: EnvironmentRef, distance: usize, slot: usize, value: Value) {
         let ancestor = Self::ancestor(environment, distance);
+        let mut environment = ancestor.borrow_mut();
 
-        let mut env = ancestor.borrow_mut();
+        let target = environment
+            .local_values
+            .get_mut(slot)
+            .expect("Resolver produced an invalid local slot");
 
-        if env.values.contains_key(&name.lexeme) {
-            env.values.insert(name.lexeme.clone(), Some(value));
-            Ok(())
-        } else {
-            Err(RuntimeError::new(
-                name.clone(),
-                format!("Undefined variable '{}'.", name.lexeme),
-            ))
-        }
+        *target = Some(value);
     }
 }

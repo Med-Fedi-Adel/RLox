@@ -43,10 +43,8 @@ impl LoxCallable for LoxFunction {
     ) -> Result<crate::token::Value, super::RuntimeError> {
         let environment = Environment::from(self.closure.clone());
 
-        for (param, argument) in self.params.iter().zip(arguments.into_iter()) {
-            environment
-                .borrow_mut()
-                .define(param.lexeme.clone(), Some(argument));
+        for argument in arguments {
+            environment.borrow_mut().define_local(Some(argument));
         }
 
         match interpreter.execute_block(&self.body, environment) {

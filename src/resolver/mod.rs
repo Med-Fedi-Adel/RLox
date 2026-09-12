@@ -32,6 +32,7 @@ struct Local {
     token: Token,
     defined: bool,
     used: bool,
+    slot: usize,
 }
 
 impl<'a> Resolver<'a> {
@@ -205,15 +206,21 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_local(&mut self, id: ExprId, name: &Token, mark_used: bool) {
+        let mut resolution = None;
+
         for (distance, scope) in self.scopes.iter_mut().rev().enumerate() {
             if let Some(local) = scope.get_mut(&name.lexeme) {
                 if mark_used {
                     local.used = true
                 }
 
-                self.interpreter.resolve(id, distance);
-                return;
+                resolution = Some((distance, local.slot));
+                break;
             }
+        }
+
+        if let Some((distance, slot)) = resolution {
+            self.interpreter.resolve(id, distance, slot);
         }
     }
 
@@ -230,19 +237,24 @@ impl<'a> Resolver<'a> {
 
         if already_declared {
             self.error(name, "Already a variable with this name in this scope.");
+            return;
         }
 
-        self.scopes
+        let scope = self
+            .scopes
             .last_mut()
-            .expect("Resolver must have an active scope")
-            .insert(
-                name.lexeme.clone(),
-                Local {
-                    token: name.clone(),
-                    defined: false,
-                    used: false,
-                },
-            );
+            .expect("Resolver must have an active scope");
+
+        let slot = scope.len();
+        scope.insert(
+            name.lexeme.clone(),
+            Local {
+                token: name.clone(),
+                defined: false,
+                used: false,
+                slot,
+            },
+        );
     }
 
     fn define(&mut self, name: &Token) {

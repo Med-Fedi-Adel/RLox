@@ -7,5 +7,7 @@ var a = "global";
 
   showA(); // global
   var a = "block";
-  showA(); // global
+    
+  showA(); //global
+  print a; // block
 }
