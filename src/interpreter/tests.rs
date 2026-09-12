@@ -754,6 +754,45 @@ fn native_clock_can_be_called() {
 }
 
 #[test]
+fn static_methods_can_be_called_on_class() {
+    let result = interpret(
+        r#"
+        class Math {
+          class square(n) {
+            return n * n;
+          }
+        }
+
+        print Math.square(3);
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn getters_run_on_property_access() {
+    let result = interpret(
+        r#"
+        class Circle {
+          init(radius) {
+            this.radius = radius;
+          }
+
+          area {
+            return 3.141592653 * this.radius * this.radius;
+          }
+        }
+
+        var circle = Circle(4);
+        print circle.area;
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
 fn init_constructor_sets_instance_fields() {
     let result = interpret(
         r#"

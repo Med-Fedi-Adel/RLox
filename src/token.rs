@@ -2,7 +2,7 @@ use std::{fmt, rc::Rc};
 
 use crate::interpreter::{
     LoxCallable,
-    lox_class::LoxClass,
+    lox_class::ClassObject,
     lox_instance::LoxInstanceRef,
 };
 
@@ -70,7 +70,7 @@ pub enum Literal {
 pub enum Value {
     Literal(Literal),
     Callable(Rc<dyn LoxCallable>),
-    Class(Rc<LoxClass>),
+    Class(Rc<ClassObject>),
     Instance(LoxInstanceRef),
 }
 

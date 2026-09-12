@@ -4,7 +4,7 @@ use crate::{
     expr::Expr,
     expr_id::{ExprId, ExprIdGenerator},
     lox::Lox,
-    stmt::Stmt,
+    stmt::{ClassMember, Stmt},
     token::{Literal, Token, TokenType},
 };
 
@@ -65,15 +65,93 @@ impl<'a> Parser<'a> {
 
         self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
 
-        let mut methods = Vec::new();
+        let mut members = Vec::new();
 
         while !self.check(TokenType::RightBrace) && !self.is_at_end() {
-            methods.push(self.function_decl("method")?);
+            members.push(self.class_member()?);
         }
 
         self.consume(TokenType::RightBrace, "Expect '}' after class body.")?;
 
-        Ok(Stmt::Class { name, methods })
+        Ok(Stmt::Class { name, members })
+    }
+
+    fn class_member(&mut self) -> Result<ClassMember, ParseError> {
+        let is_static = self.matches(&[TokenType::Class]);
+        let name = self.consume(TokenType::Identifier, "Expect method name.")?;
+
+        if self.check(TokenType::LeftBrace) {
+            if is_static {
+                return Err(self.error(
+                    &name,
+                    "Static getters are not allowed.",
+                ));
+            }
+
+            let body = self.getter_body()?;
+
+            return Ok(ClassMember::Getter { name, body });
+        }
+
+        let (parameters, body) = self.method_params_and_body("method")?;
+
+        if is_static {
+            Ok(ClassMember::StaticMethod {
+                name,
+                parameters,
+                body,
+            })
+        } else {
+            Ok(ClassMember::Method {
+                name,
+                parameters,
+                body,
+            })
+        }
+    }
+
+    fn method_params_and_body(
+        &mut self,
+        kind: &str,
+    ) -> Result<(Rc<Vec<Token>>, Rc<Vec<Stmt>>), ParseError> {
+        self.consume(
+            TokenType::LeftParen,
+            &format!("Expect '(' after {} name.", kind),
+        )?;
+
+        let mut parameters: Vec<Token> = Vec::new();
+
+        if !self.check(TokenType::RightParen) {
+            loop {
+                if parameters.len() >= 255 {
+                    let token = self.peek().clone();
+                    self.error(&token, "Can't have more than 255 parameters.");
+                }
+
+                parameters.push(self.consume(TokenType::Identifier, "Expect parameter name.")?);
+
+                if !self.matches(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+
+        self.consume(TokenType::RightParen, "Expect ')' after parameters.")?;
+
+        self.consume(
+            TokenType::LeftBrace,
+            &format!("Expect '{{' before {} body.", kind),
+        )?;
+
+        let body = self.block()?;
+
+        Ok((Rc::new(parameters), Rc::new(body)))
+    }
+
+    fn getter_body(&mut self) -> Result<Rc<Vec<Stmt>>, ParseError> {
+        self.consume(TokenType::LeftBrace, "Expect '{' before getter body.")?;
+
+        Ok(Rc::new(self.block()?))
     }
 
     fn check_next(&self, token_type: TokenType) -> bool {

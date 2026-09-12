@@ -7,7 +7,7 @@ use crate::{
     expr::Expr,
     expr_id::ExprId,
     interpreter::{self, lox_function::LoxFunction},
-    stmt::Stmt,
+    stmt::{ClassMember, Stmt},
     token::{Literal, Token, TokenType, Value},
 };
 
@@ -173,33 +173,81 @@ impl Interpreter {
                 ExecutionResult::Success
             }
 
-            Stmt::Class { name, methods } => {
+            Stmt::Class { name, members } => {
                 self.define_variable(name, None);
 
-                let mut class_methods = HashMap::new();
+                let mut instance_methods = HashMap::new();
+                let mut getters = HashMap::new();
+                let mut static_methods = HashMap::new();
 
-                for method in methods {
-                    if let Stmt::Function {
-                        name: method_name,
-                        parameters,
-                        body,
-                    } = method
-                    {
-                        let function = LoxFunction::new(
-                            Some(method_name.clone()),
-                            parameters.clone(),
-                            body.clone(),
-                            self.environment.clone(),
-                            method_name.lexeme == "init",
-                        );
+                for member in members {
+                    match member {
+                        ClassMember::Method {
+                            name: method_name,
+                            parameters,
+                            body,
+                        } => {
+                            let function = LoxFunction::new(
+                                Some(method_name.clone()),
+                                parameters.clone(),
+                                body.clone(),
+                                self.environment.clone(),
+                                method_name.lexeme == "init",
+                            );
 
-                        class_methods.insert(method_name.lexeme.clone(), Rc::new(function));
+                            instance_methods
+                                .insert(method_name.lexeme.clone(), Rc::new(function));
+                        }
+
+                        ClassMember::StaticMethod {
+                            name: method_name,
+                            parameters,
+                            body,
+                        } => {
+                            let function = LoxFunction::new(
+                                Some(method_name.clone()),
+                                parameters.clone(),
+                                body.clone(),
+                                self.environment.clone(),
+                                false,
+                            );
+
+                            static_methods.insert(method_name.lexeme.clone(), Rc::new(function));
+                        }
+
+                        ClassMember::Getter {
+                            name: method_name,
+                            body,
+                        } => {
+                            let function = LoxFunction::new(
+                                Some(method_name.clone()),
+                                Rc::new(Vec::new()),
+                                body.clone(),
+                                self.environment.clone(),
+                                false,
+                            );
+
+                            getters.insert(method_name.lexeme.clone(), Rc::new(function));
+                        }
                     }
                 }
 
-                let klass = lox_class::LoxClass::new(name.lexeme.clone(), class_methods);
+                let instance_class = Rc::new(lox_class::LoxClass::new(
+                    name.lexeme.clone(),
+                    instance_methods,
+                    getters,
+                ));
 
-                match self.assign_variable(name, Value::Class(Rc::new(klass))) {
+                let metaclass = Rc::new(lox_class::LoxClass::new(
+                    format!("{} metaclass", name.lexeme),
+                    static_methods,
+                    HashMap::new(),
+                ));
+
+                let class_object =
+                    Rc::new(lox_class::ClassObject::new(instance_class, metaclass));
+
+                match self.assign_variable(name, Value::Class(class_object)) {
                     Ok(()) => ExecutionResult::Success,
                     Err(error) => ExecutionResult::RuntimeError(error),
                 }
@@ -378,7 +426,16 @@ impl Interpreter {
                 let object = self.evaluate(object)?;
 
                 match object {
-                    Value::Instance(instance) => LoxInstance::get(instance, name),
+                    Value::Class(class) => match class.find_static(&name.lexeme) {
+                        Some(method) => Ok(Value::Callable(method)),
+
+                        None => Err(RuntimeError::new(
+                            name.clone(),
+                            format!("Undefined property '{}'.", name.lexeme),
+                        )),
+                    },
+
+                    Value::Instance(instance) => LoxInstance::get(self, instance, name),
 
                     _ => Err(RuntimeError::new(
                         name.clone(),
@@ -674,4 +731,6 @@ mod tests;
 
 pub mod lox_class;
 pub mod lox_instance;
+
+pub use lox_class::ClassObject;
 mod lox_function;

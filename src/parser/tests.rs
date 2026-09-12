@@ -3,7 +3,7 @@ use crate::{
     lox::Lox,
     parser::Parser,
     scanner::Scanner,
-    stmt::Stmt,
+    stmt::{ClassMember, Stmt},
     token::{Literal, Token, TokenType},
 };
 
@@ -506,12 +506,12 @@ fn parses_class_declaration() {
     assert_eq!(statements.len(), 1);
 
     match &statements[0] {
-        Stmt::Class { name, methods } => {
+        Stmt::Class { name, members } => {
             assert_eq!(name.lexeme, "Breakfast");
-            assert_eq!(methods.len(), 2);
+            assert_eq!(members.len(), 2);
 
-            for method in methods {
-                assert!(matches!(method, Stmt::Function { .. }));
+            for member in members {
+                assert!(matches!(member, ClassMember::Method { .. }));
             }
         }
 

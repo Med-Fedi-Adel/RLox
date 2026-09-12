@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::{
-    interpreter::RuntimeError,
-    interpreter::lox_class::LoxClass,
+    interpreter::{Interpreter, LoxCallable, RuntimeError, lox_class::LoxClass},
     token::{Token, Value},
 };
 
@@ -27,13 +26,23 @@ impl LoxInstance {
         self.klass.name()
     }
 
-    pub fn get(instance: LoxInstanceRef, name: &Token) -> Result<Value, RuntimeError> {
+    pub fn get(
+        interpreter: &mut Interpreter,
+        instance: LoxInstanceRef,
+        name: &Token,
+    ) -> Result<Value, RuntimeError> {
         {
             let instance = instance.borrow();
 
             if let Some(value) = instance.fields.get(&name.lexeme) {
                 return Ok(value.clone());
             }
+        }
+
+        let getter = instance.borrow().klass.find_getter(&name.lexeme);
+
+        if let Some(getter) = getter {
+            return getter.bind(instance).call(interpreter, vec![]);
         }
 
         let method = instance.borrow().klass.find_method(&name.lexeme);

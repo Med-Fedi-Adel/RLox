@@ -3,6 +3,26 @@ use std::rc::Rc;
 use crate::{expr::Expr, token::Token};
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum ClassMember {
+    Method {
+        name: Token,
+        parameters: Rc<Vec<Token>>,
+        body: Rc<Vec<Stmt>>,
+    },
+
+    StaticMethod {
+        name: Token,
+        parameters: Rc<Vec<Token>>,
+        body: Rc<Vec<Stmt>>,
+    },
+
+    Getter {
+        name: Token,
+        body: Rc<Vec<Stmt>>,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Stmt {
     Expression {
         expression: Expr,
@@ -42,7 +62,7 @@ pub enum Stmt {
 
     Class {
         name: Token,
-        methods: Vec<Stmt>,
+        members: Vec<ClassMember>,
     },
 
     Return {

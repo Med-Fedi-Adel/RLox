@@ -4,7 +4,7 @@ use crate::{
     expr::Expr,
     expr_id::ExprId,
     interpreter::{self, Interpreter},
-    stmt::Stmt,
+    stmt::{ClassMember, Stmt},
     token::{Token, TokenType},
 };
 
@@ -116,7 +116,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_function(parameters, body, FunctionType::Function);
             }
 
-            Stmt::Class { name, methods } => {
+            Stmt::Class { name, members } => {
                 let enclosing_class = self.current_class;
                 self.current_class = ClassType::Class;
 
@@ -125,24 +125,42 @@ impl<'a> Resolver<'a> {
 
                 self.begin_class_scope();
 
-                for method in methods {
-                    if let Stmt::Function {
-                        name: method_name,
-                        parameters,
-                        body,
-                    } = method
-                    {
-                        let function_type = if method_name.lexeme == "init" {
-                            FunctionType::Initializer
-                        } else {
-                            FunctionType::Method
-                        };
+                for member in members {
+                    match member {
+                        ClassMember::Method {
+                            name: method_name,
+                            parameters,
+                            body,
+                        } => {
+                            let function_type = if method_name.lexeme == "init" {
+                                FunctionType::Initializer
+                            } else {
+                                FunctionType::Method
+                            };
 
-                        self.resolve_function(parameters, body, function_type);
+                            self.resolve_function(parameters, body, function_type);
+                        }
+
+                        ClassMember::Getter { name: _, body } => {
+                            self.resolve_function(&[], body, FunctionType::Method);
+                        }
+
+                        ClassMember::StaticMethod { .. } => {}
                     }
                 }
 
                 self.end_scope();
+
+                for member in members {
+                    if let ClassMember::StaticMethod {
+                        name: _,
+                        parameters,
+                        body,
+                    } = member
+                    {
+                        self.resolve_function(parameters, body, FunctionType::Function);
+                    }
+                }
 
                 self.current_class = enclosing_class;
             }
