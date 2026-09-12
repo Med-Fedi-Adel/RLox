@@ -595,6 +595,13 @@ impl<'a> Parser<'a> {
             });
         }
 
+        if self.matches(&[TokenType::This]) {
+            return Ok(Expr::This {
+                id: self.lox.next_expr_id(),
+                keyword: self.previous(),
+            });
+        }
+
         if self.matches(&[TokenType::Identifier]) {
             return Ok(Expr::Variable {
                 id: self.lox.next_expr_id(),

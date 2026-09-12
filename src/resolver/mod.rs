@@ -5,13 +5,19 @@ use crate::{
     expr_id::ExprId,
     interpreter::{self, Interpreter},
     stmt::Stmt,
-    token::Token,
+    token::{Token, TokenType},
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum FunctionType {
     None,
     Function,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum ClassType {
+    None,
+    Class,
 }
 
 #[derive(Debug)]
@@ -24,6 +30,7 @@ pub struct Resolver<'a> {
     interpreter: &'a mut Interpreter,
     scopes: Vec<HashMap<String, Local>>,
     current_function: FunctionType,
+    current_class: ClassType,
     errors: Vec<ResolutionError>,
 }
 
@@ -41,6 +48,7 @@ impl<'a> Resolver<'a> {
             interpreter,
             scopes: Vec::new(),
             current_function: FunctionType::None,
+            current_class: ClassType::None,
             errors: Vec::new(),
         }
     }
@@ -106,9 +114,29 @@ impl<'a> Resolver<'a> {
                 self.resolve_function(parameters, body, FunctionType::Function);
             }
 
-            Stmt::Class { name, methods: _ } => {
+            Stmt::Class { name, methods } => {
+                let enclosing_class = self.current_class;
+                self.current_class = ClassType::Class;
+
                 self.declare(name);
                 self.define(name);
+
+                self.begin_class_scope();
+
+                for method in methods {
+                    if let Stmt::Function {
+                        name: _,
+                        parameters,
+                        body,
+                    } = method
+                    {
+                        self.resolve_function(parameters, body, FunctionType::Function);
+                    }
+                }
+
+                self.end_scope();
+
+                self.current_class = enclosing_class;
             }
 
             Stmt::Return { keyword, value } => {
@@ -193,6 +221,14 @@ impl<'a> Resolver<'a> {
             Expr::Set { object, name: _, value } => {
                 self.resolve_expr(value);
                 self.resolve_expr(object);
+            }
+
+            Expr::This { id, keyword } => {
+                if self.current_class == ClassType::None {
+                    self.error(keyword, "Can't use 'this' outside of a class.");
+                } else {
+                    self.resolve_local(*id, keyword, true);
+                }
             }
 
             Expr::Function { params, body } => {
@@ -298,6 +334,25 @@ impl<'a> Resolver<'a> {
 
     fn begin_scope(&mut self) {
         self.scopes.push(HashMap::new());
+    }
+
+    fn begin_class_scope(&mut self) {
+        self.begin_scope();
+
+        let this = Token::new(TokenType::This, "this".to_string(), None, 1);
+
+        self.scopes
+            .last_mut()
+            .expect("Resolver must have an active scope")
+            .insert(
+                "this".to_string(),
+                Local {
+                    token: this,
+                    defined: true,
+                    used: true,
+                    slot: 0,
+                },
+            );
     }
 
     fn end_scope(&mut self) {

@@ -754,6 +754,63 @@ fn native_clock_can_be_called() {
 }
 
 #[test]
+fn this_in_method_accesses_instance_fields() {
+    let result = interpret(
+        r#"
+        class Cake {
+          taste() {
+            var adjective = "delicious";
+            print "The " + this.flavor + " cake is " + adjective + "!";
+          }
+        }
+
+        var cake = Cake();
+        cake.flavor = "German chocolate";
+        cake.taste();
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn bound_method_retains_this() {
+    let result = interpret(
+        r#"
+        class Egotist {
+          speak() {
+            print this;
+          }
+        }
+
+        var method = Egotist().speak;
+        method();
+        "#,
+    );
+
+    assert!(matches!(result, ExecutionResult::Success));
+}
+
+#[test]
+fn this_outside_class_is_resolution_error() {
+    let mut lox = Lox::new();
+    let mut scanner = Scanner::new("print this;");
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens, &mut lox);
+    let statements = parser.parse();
+    let mut interpreter = Interpreter::new();
+
+    let errors = {
+        let mut resolver = Resolver::new(&mut interpreter);
+        resolver.resolve(&statements);
+        resolver.into_errors()
+    };
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message, "Can't use 'this' outside of a class.");
+}
+
+#[test]
 fn class_call_creates_instance() {
     let result = interpret(
         r#"

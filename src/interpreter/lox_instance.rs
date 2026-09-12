@@ -27,15 +27,25 @@ impl LoxInstance {
         self.klass.name()
     }
 
-    pub fn get(&self, name: &Token) -> Result<Value, RuntimeError> {
-        match self.fields.get(&name.lexeme) {
-            Some(value) => Ok(value.clone()),
+    pub fn get(instance: LoxInstanceRef, name: &Token) -> Result<Value, RuntimeError> {
+        {
+            let instance = instance.borrow();
 
-            None => Err(RuntimeError::new(
-                name.clone(),
-                format!("Undefined property '{}'.", name.lexeme),
-            )),
+            if let Some(value) = instance.fields.get(&name.lexeme) {
+                return Ok(value.clone());
+            }
         }
+
+        let method = instance.borrow().klass.find_method(&name.lexeme);
+
+        if let Some(method) = method {
+            return Ok(Value::Callable(method.bind(instance)));
+        }
+
+        Err(RuntimeError::new(
+            name.clone(),
+            format!("Undefined property '{}'.", name.lexeme),
+        ))
     }
 
     pub fn set(&mut self, name: &Token, value: Value) {

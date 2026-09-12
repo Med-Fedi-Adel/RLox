@@ -65,6 +65,11 @@ pub enum Expr {
         value: Box<Expr>,
     },
 
+    This {
+        id: ExprId,
+        keyword: Token,
+    },
+
     Function {
         params: Rc<Vec<Token>>,
         body: Rc<Vec<Stmt>>,

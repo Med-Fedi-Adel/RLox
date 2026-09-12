@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     environment::{self, Environment, EnvironmentRef},
-    interpreter::{ExecutionResult, LoxCallable},
+    interpreter::{ExecutionResult, LoxCallable, lox_instance::LoxInstanceRef},
     stmt::Stmt,
     token::{Literal, Token, Value},
 };
@@ -28,6 +28,21 @@ impl LoxFunction {
             body,
             closure,
         }
+    }
+
+    pub fn bind(self: &Rc<Self>, instance: LoxInstanceRef) -> Rc<LoxFunction> {
+        let environment = Environment::from(self.closure.clone());
+
+        environment
+            .borrow_mut()
+            .define_local(Some(Value::Instance(instance)));
+
+        Rc::new(LoxFunction::new(
+            self.name.clone(),
+            self.params.clone(),
+            self.body.clone(),
+            environment,
+        ))
     }
 }
 

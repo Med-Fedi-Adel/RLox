@@ -1,0 +1,4 @@
+print this;
+
+// Expected resolution error:
+// Can't use 'this' outside of a class.

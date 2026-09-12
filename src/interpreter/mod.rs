@@ -1,5 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
+use crate::interpreter::lox_instance::LoxInstance;
+
 use crate::{
     environment::{self, Environment, EnvironmentRef},
     expr::Expr,
@@ -170,10 +172,30 @@ impl Interpreter {
                 ExecutionResult::Success
             }
 
-            Stmt::Class { name, methods: _ } => {
+            Stmt::Class { name, methods } => {
                 self.define_variable(name, None);
 
-                let klass = lox_class::LoxClass::new(name.lexeme.clone());
+                let mut class_methods = HashMap::new();
+
+                for method in methods {
+                    if let Stmt::Function {
+                        name: method_name,
+                        parameters,
+                        body,
+                    } = method
+                    {
+                        let function = LoxFunction::new(
+                            Some(method_name.clone()),
+                            parameters.clone(),
+                            body.clone(),
+                            self.environment.clone(),
+                        );
+
+                        class_methods.insert(method_name.lexeme.clone(), Rc::new(function));
+                    }
+                }
+
+                let klass = lox_class::LoxClass::new(name.lexeme.clone(), class_methods);
 
                 match self.assign_variable(name, Value::Class(Rc::new(klass))) {
                     Ok(()) => ExecutionResult::Success,
@@ -354,7 +376,7 @@ impl Interpreter {
                 let object = self.evaluate(object)?;
 
                 match object {
-                    Value::Instance(instance) => instance.borrow().get(name),
+                    Value::Instance(instance) => LoxInstance::get(instance, name),
 
                     _ => Err(RuntimeError::new(
                         name.clone(),
@@ -362,6 +384,8 @@ impl Interpreter {
                     )),
                 }
             }
+
+            Expr::This { id, keyword } => self.look_up_variable(*id, keyword),
 
             Expr::Set { object, name, value } => {
                 let object = self.evaluate(object)?;
