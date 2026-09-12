@@ -1,0 +1,19 @@
+var global = "value";
+
+{
+  var used = "value";
+  print used;
+}
+
+
+var value = "global";
+{
+  var value = "local";
+}
+print value;
+
+{
+  var unused = "value";
+}
+
+

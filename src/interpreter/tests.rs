@@ -309,6 +309,7 @@ fn local_variable_is_not_accessible_outside_block() {
         r#"
         {
             var a = "inside";
+            print a;
         }
 
         print a;
