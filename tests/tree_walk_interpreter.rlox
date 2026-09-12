@@ -1,0 +1,200 @@
+// rlox file as a conclusion to the reust implementation of the part Tree-Walk Interpreter (Crafting Interpreters, Part II)
+// ============================================================
+// A single program that exercises the language features built
+// so far: expressions, variables, control flow, functions,
+// closures, classes, and inheritance.
+// ============================================================
+
+print "=== Ch. 7 — Expressions ===";
+
+print 1 + 2 * 3;              // 7
+print (1 + 2) * 3;            // 9
+print !false;                 // true
+print 3 > 2;                  // true
+print 3 == 3;                 // true
+print "hello" + " " + "world"; // hello world
+print nil;                    // nil
+
+print "=== Ch. 8 — Statements & State ===";
+
+var global = "global";
+{
+  var global = "shadowed";
+  print global;               // shadowed
+}
+print global;                 // global
+
+var a = 1;
+var b = 2;
+{
+  var temp = a;
+  a = b;
+  b = temp;
+}
+print a;                      // 2
+print b;                      // 1
+
+print "=== Ch. 9 — Control Flow ===";
+
+if (true) print "then"; else print "else";
+if (false) print "nope"; else print "else branch";
+
+var n = 0;
+while (n < 3) {
+  print n;
+  n = n + 1;
+}
+
+for (var i = 0; i < 3; i = i + 1) {
+  print i;
+}
+
+var count = 0;
+while (true) {
+  if (count == 2) break;
+  print count;
+  count = count + 1;
+}
+
+print "=== Ch. 10 — Functions ===";
+
+fun greet(name) {
+  print "Hello, " + name + "!";
+}
+
+greet("Lox");
+
+fun makeAdder(n) {
+  fun add(m) {
+    return n + m;
+  }
+  return add;
+}
+
+var addFive = makeAdder(5);
+print addFive(3);             // 8
+
+fun factorial(n) {
+  if (n <= 1) return 1;
+  return n * factorial(n - 1);
+}
+
+print factorial(5);           // 120
+
+print "=== Ch. 10 — Lambdas ===";
+
+fun applyTwice(fn, value) {
+  return fn(fn(value));
+}
+
+print applyTwice(fun (x) { return x * 2; }, 3); // 12
+
+print "=== Ch. 11 — Locals & Closures ===";
+
+fun makeCounter() {
+  var i = 0;
+  fun count() {
+    i = i + 1;
+    return i;
+  }
+  return count;
+}
+
+var counter = makeCounter();
+print counter();              // 1
+print counter();              // 2
+
+print "=== Native Functions ===";
+
+print clock() > 0;            // true
+
+print "=== Ch. 12 — Classes ===";
+
+class DevonshireCream {
+  serveOn() {
+    return "scones";
+  }
+}
+
+print DevonshireCream().serveOn();
+
+class Coffee {
+  init(cream) {
+    this.cream = cream;
+  }
+}
+
+var cup = Coffee("yes, please");
+print cup.cream;
+
+class Circle {
+  init(radius) {
+    this.radius = radius;
+  }
+
+  area {
+    return 3.14159 * this.radius * this.radius;
+  }
+}
+
+print Circle(2).area;
+
+class Math {
+  class square(n) {
+    return n * n;
+  }
+}
+
+print Math.square(4);           // 16
+
+class Egotist {
+  speak() {
+    return "I am " + this.flavor;
+  }
+}
+
+var cake = Egotist();
+cake.flavor = "chocolate";
+print cake.speak();
+
+var method = cake.speak;
+print method();               // bound method keeps `this`
+
+print "=== Ch. 13 — Inheritance ===";
+
+class Doughnut {
+  cook() {
+    print "Fry until golden brown.";
+  }
+}
+
+class BostonCream < Doughnut {
+  cook() {
+    super.cook();
+    print "Pipe custard and coat with chocolate.";
+  }
+}
+
+BostonCream().cook();
+
+class A {
+  method() {
+    print "A method";
+  }
+}
+
+class B < A {
+  method() {
+    print "B method";
+  }
+
+  test() {
+    super.method();
+  }
+}
+
+class C < B {}
+
+C().test();                   // "A method" — super uses enclosing class
+
+print "=== Done ===";
